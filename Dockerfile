@@ -12,6 +12,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Garante que /app/public exista mesmo se o repo não tiver a pasta
+RUN mkdir -p /app/public
 ENV NEXT_TELEMETRY_DISABLED=1
 # POSTGRES_URL não é necessário no build, mas alguns modules importam client.ts na análise
 ENV POSTGRES_URL="postgres://build:build@localhost:5432/build"
