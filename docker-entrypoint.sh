@@ -2,14 +2,15 @@
 set -e
 
 echo "[grisomaq] Aplicando schema (drizzle push)…"
-./node_modules/.bin/drizzle-kit push || {
+if ! npx --no-install drizzle-kit push --force; then
   echo "[grisomaq] drizzle-kit push falhou. Continuando mesmo assim."
-}
+fi
 
-# Cria admin inicial se ainda não existir
 if [ -n "$SEED_ADMIN" ] && [ "$SEED_ADMIN" = "1" ]; then
   echo "[grisomaq] Rodando seed inicial…"
-  ./node_modules/.bin/tsx db/seed.ts || echo "[grisomaq] seed falhou (talvez já rodou)."
+  if ! npx --no-install tsx db/seed.ts; then
+    echo "[grisomaq] seed falhou (talvez já rodou)."
+  fi
 fi
 
 echo "[grisomaq] Subindo Next.js…"
