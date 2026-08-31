@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: grisomaq
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-troque_esta_senha}
+      POSTGRES_DB: grisomaq
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "grisomaq"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # Opcional: exponha a porta só se quiser conectar de fora do docker
+    # ports:
+    #   - "5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      POSTGRES_URL: postgres://grisomaq:${POSTGRES_PASSWORD:-troque_esta_senha}@db:5432/grisomaq
+      AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET no .env}
+      ADMIN_SENHA: ${ADMIN_SENHA:-grisomaq123}
+      # Roda drizzle push + seed no primeiro start; troque para 0 depois
+      SEED_ADMIN: ${SEED_ADMIN:-1}
+      UPLOAD_DIR: /data/uploads
+      NEXT_PUBLIC_UPLOAD_BASE_URL: /api/uploads
+    volumes:
+      - uploads:/data
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  uploads:

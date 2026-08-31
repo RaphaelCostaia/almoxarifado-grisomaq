@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: #eee9d6;
+  --surface: #f7f5ee;
+  --surface-2: #ffffff;
+  --border: #e1e6d2;
+  --text: #243213;
+  --text-muted: #42591f;
+  --brand: #54742c;
+  --brand-strong: #42591f;
+  --input-bg: #f7f5ee;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg: #12160c;
+  --surface: #1c2213;
+  --surface-2: #232a19;
+  --border: #2f3822;
+  --text: #e8ecd8;
+  --text-muted: #b8c295;
+  --brand: #98b96b;
+  --brand-strong: #b8d488;
+  --input-bg: #1c2213;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.input-base {
+  @apply w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2;
+  background: var(--input-bg);
+  border-color: var(--border);
+  color: var(--text);
+}
+.input-base::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.input-base:focus {
+  border-color: var(--brand);
+  --tw-ring-color: rgba(84, 116, 44, 0.3);
+}
+
+.btn-primary {
+  @apply inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm focus:outline-none focus:ring-2 disabled:opacity-50;
+  background: var(--brand);
+}
+.btn-primary:hover {
+  background: var(--brand-strong);
+}
+.btn-primary:focus {
+  --tw-ring-color: rgba(84, 116, 44, 0.4);
+}
+
+.btn-secondary {
+  @apply inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2;
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn-secondary:hover {
+  background: var(--surface);
+}
+
+.btn-ghost {
+  @apply inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium focus:outline-none;
+  color: var(--text);
+}
+.btn-ghost:hover {
+  background: var(--surface);
+}
+
+.chip {
+  @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-xs;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.card-base {
+  @apply rounded-lg shadow-sm;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.label-form {
+  @apply mb-1 block text-xs font-semibold uppercase tracking-wide;
+  color: var(--text-muted);
+}
