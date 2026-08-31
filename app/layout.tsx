@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Fluxo de Peças · GRISOMAQ",
   description:
     "Sistema de solicitação de peças e compras da GRISOMAQ — pedidos, estoque e compras em um só lugar.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default async function RootLayout({
