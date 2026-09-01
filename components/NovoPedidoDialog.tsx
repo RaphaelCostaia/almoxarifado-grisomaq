@@ -5,25 +5,50 @@ import { MOTIVOS_PEDIDO, type Peca } from "@/db/schema";
 import { PecaAutocomplete } from "./PecaAutocomplete";
 import { useCurrentUserName } from "@/lib/user";
 import { useSession } from "./SessionProvider";
+import { FileInput } from "./FileInput";
 import clsx from "clsx";
+
+export type PedidoPrefill = {
+  frota?: string;
+  descricao?: string;
+  quantidade?: number;
+  unidade?: string;
+  motivo?: string;
+  prioridade?: "normal" | "urgente";
+  observacoes?: string;
+  pecaId?: number | null;
+};
 
 type Props = {
   onClose: () => void;
   onCreated: () => void;
+  prefill?: PedidoPrefill;
 };
 
-export function NovoPedidoDialog({ onClose, onCreated }: Props) {
+export function NovoPedidoDialog({ onClose, onCreated, prefill }: Props) {
   const { nome } = useSession();
-  const [frota, setFrota] = useState("");
-  const [descricao, setDescricao] = useState("");
+  const [frota, setFrota] = useState(prefill?.frota ?? "");
+  const [descricao, setDescricao] = useState(prefill?.descricao ?? "");
   const [peca, setPeca] = useState<Peca | null>(null);
-  const [qtd, setQtd] = useState<number>(1);
-  const [unidade, setUnidade] = useState("un");
+  const [qtd, setQtd] = useState<number>(prefill?.quantidade ?? 1);
+  const [unidade, setUnidade] = useState(prefill?.unidade ?? "un");
+  const motivoInicial = (MOTIVOS_PEDIDO as readonly string[]).includes(
+    prefill?.motivo ?? ""
+  )
+    ? (prefill!.motivo as (typeof MOTIVOS_PEDIDO)[number])
+    : prefill?.motivo
+    ? "Outro"
+    : MOTIVOS_PEDIDO[0];
   const [motivo, setMotivo] = useState<(typeof MOTIVOS_PEDIDO)[number]>(
-    MOTIVOS_PEDIDO[0]
+    motivoInicial as any
   );
-  const [prioridade, setPrioridade] = useState<"normal" | "urgente">("normal");
-  const [observacoes, setObservacoes] = useState("");
+  const [motivoOutro, setMotivoOutro] = useState(
+    motivoInicial === "Outro" ? prefill?.motivo ?? "" : ""
+  );
+  const [prioridade, setPrioridade] = useState<"normal" | "urgente">(
+    prefill?.prioridade ?? "normal"
+  );
+  const [observacoes, setObservacoes] = useState(prefill?.observacoes ?? "");
   const [foto, setFoto] = useState<File | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -51,7 +76,10 @@ export function NovoPedidoDialog({ onClose, onCreated }: Props) {
           descricao: peca ? peca.nome : descricao,
           quantidade: qtd,
           unidade: peca ? peca.unidade : unidade,
-          motivo,
+          motivo:
+            motivo === "Outro" && motivoOutro.trim()
+              ? motivoOutro.trim().slice(0, 60)
+              : motivo,
           prioridade,
           observacoes: observacoes || null,
           fotoUrl,
@@ -148,15 +176,24 @@ export function NovoPedidoDialog({ onClose, onCreated }: Props) {
               </option>
             ))}
           </select>
+          {motivo === "Outro" && (
+            <input
+              className="input-base mt-2"
+              placeholder="Descreva o motivo…"
+              value={motivoOutro}
+              onChange={(e) => setMotivoOutro(e.target.value)}
+              required
+              maxLength={60}
+            />
+          )}
         </div>
         <div>
           <label className="label-form">Solicitante</label>
-          <input
-            className="input-base bg-white"
-            value={nome}
-            disabled
-          />
-          <p className="mt-1 text-[11px] opacity-70">
+          <input className="input-base" value={nome} disabled />
+          <p
+            className="mt-1 text-[11px]"
+            style={{ color: "var(--text-muted)" }}
+          >
             Registrado como você está logado. Para trocar, saia e entre com
             outro usuário.
           </p>
@@ -167,24 +204,40 @@ export function NovoPedidoDialog({ onClose, onCreated }: Props) {
             <button
               type="button"
               onClick={() => setPrioridade("normal")}
-              className={clsx(
-                "rounded-md border px-3 py-2 text-sm font-semibold",
+              className="rounded-md border px-3 py-2 text-sm font-semibold transition"
+              style={
                 prioridade === "normal"
-                  ? "border-oliva-600 bg-oliva-600 text-white"
-                  : "border-oliva-100 bg-white text-oliva-800 hover:bg-oliva-50"
-              )}
+                  ? {
+                      background: "var(--brand)",
+                      borderColor: "var(--brand)",
+                      color: "#000",
+                    }
+                  : {
+                      background: "var(--surface)",
+                      borderColor: "var(--border)",
+                      color: "var(--text-muted)",
+                    }
+              }
             >
               Normal
             </button>
             <button
               type="button"
               onClick={() => setPrioridade("urgente")}
-              className={clsx(
-                "rounded-md border px-3 py-2 text-sm font-semibold",
+              className="rounded-md border px-3 py-2 text-sm font-semibold transition"
+              style={
                 prioridade === "urgente"
-                  ? "border-red-600 bg-red-600 text-white"
-                  : "border-oliva-100 bg-white text-oliva-800 hover:bg-red-50"
-              )}
+                  ? {
+                      background: "var(--danger)",
+                      borderColor: "var(--danger)",
+                      color: "#fff",
+                    }
+                  : {
+                      background: "var(--surface)",
+                      borderColor: "var(--border)",
+                      color: "var(--text-muted)",
+                    }
+              }
             >
               🔴 Urgente
             </button>
@@ -194,12 +247,7 @@ export function NovoPedidoDialog({ onClose, onCreated }: Props) {
           <label className="label-form">
             Foto da peça (opcional, ajuda muito)
           </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setFoto(e.target.files?.[0] ?? null)}
-            className="text-sm text-oliva-800"
-          />
+          <FileInput file={foto} onFile={setFoto} accept="image/*" />
         </div>
         <div>
           <label className="label-form">Observações (opcional)</label>

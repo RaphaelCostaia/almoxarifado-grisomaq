@@ -90,7 +90,7 @@ export function ComprasLista() {
             className="card card-hover flex flex-wrap items-center gap-3 px-3.5 py-3"
           >
             <span
-              className="rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest"
+              className="inline-flex shrink-0 items-center rounded px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-widest"
               style={statusStyle(c.status)}
             >
               {STATUS_COMPRA_LABELS[c.status]}

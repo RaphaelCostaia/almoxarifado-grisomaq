@@ -22,6 +22,22 @@ const COLUNAS: { key: Pedido["status"]; label: string; dot: string }[] = [
   { key: "cancelada", label: "Cancelado", dot: "bg-neutral-500" },
 ];
 
+const FILTROS_KEY = "grisomaq_filtros_pedidos";
+function lerFiltros() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(localStorage.getItem(FILTROS_KEY) ?? "null");
+  } catch {
+    return null;
+  }
+}
+function salvarFiltros(f: any) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(FILTROS_KEY, JSON.stringify(f));
+  } catch {}
+}
+
 export function PedidosBoard() {
   const isAdmin = useIsAdmin();
   const [q, setQ] = useState("");
@@ -32,6 +48,28 @@ export function PedidosBoard() {
   const [novo, setNovo] = useState(false);
   const [detalheId, setDetalheId] = useState<number | null>(null);
   const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
+  const [prefill, setPrefill] = useState<any | null>(null);
+
+  // Restaura filtros salvos na 1a montagem
+  useEffect(() => {
+    const f = lerFiltros();
+    if (f) {
+      setQ(f.q ?? "");
+      setFrota(f.frota ?? "todas");
+      setSoUrgentes(!!f.soUrgentes);
+      setSoAtraso(!!f.soAtraso);
+      setOcultarFinalizados(!!f.ocultarFinalizados);
+    }
+    // Pede permissão pra notificação (silencioso se recusar)
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  // Persiste sempre que muda
+  useEffect(() => {
+    salvarFiltros({ q, frota, soUrgentes, soAtraso, ocultarFinalizados });
+  }, [q, frota, soUrgentes, soAtraso, ocultarFinalizados]);
 
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -74,6 +112,26 @@ export function PedidosBoard() {
       return;
     }
     if (novosUrgentes.size > 0) {
+      // Notificação sonora + browser
+      try {
+        const audio = new Audio(
+          "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAAcAAAADAAAJDABERERERERERERERERERERERERERERiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIu7u7u7u7u7u7u7u7u7u7u7u7u7u7u///////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAACSSSXqvzAAAAAAAAAAAAAAAAAAAAAP/7kGQAAANUMEoFPeACNQV40KEYABEY41g5vAAI9RjrCzeAAQAAAmwAAAAAM4x71NUS4Znxs+GKZeS7oHZ3jHKV1JcRJb47r3aXwILhTOhb7cSg5Gjp2VjMuXcMj3jSk8fXQ0GYJTNyYP5QHRUEEUFhkxyaCEZ2LRy1EJqoRuNZGgFAHzM9DBHfaQwqwCPCFmDeIQmY1RVdAB4dsBjPBu6PoBc5AA=="
+        );
+        audio.volume = 0.4;
+        audio.play().catch(() => {});
+      } catch {}
+      try {
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          const p = pedidos.find((x) => novosUrgentes.has(x.id));
+          if (p) {
+            new Notification("🔴 Pedido URGENTE", {
+              body: `${p.frota} · ${p.descricao} (por ${p.solicitante})`,
+              icon: "/favicon.svg",
+              tag: `urgente-${p.id}`,
+            });
+          }
+        }
+      } catch {}
       const timer = setTimeout(() => {
         setSeenIds((prev) => {
           const next = new Set(prev);
@@ -149,9 +207,14 @@ export function PedidosBoard() {
 
       {novo && (
         <NovoPedidoDialog
-          onClose={() => setNovo(false)}
+          prefill={prefill ?? undefined}
+          onClose={() => {
+            setNovo(false);
+            setPrefill(null);
+          }}
           onCreated={() => {
             setNovo(false);
+            setPrefill(null);
             mutate();
           }}
         />
@@ -161,6 +224,11 @@ export function PedidosBoard() {
           id={detalheId}
           onClose={() => setDetalheId(null)}
           onChanged={() => mutate()}
+          onDuplicar={(dados) => {
+            setDetalheId(null);
+            setPrefill(dados);
+            setNovo(true);
+          }}
         />
       )}
     </div>

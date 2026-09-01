@@ -52,8 +52,8 @@ export const pecas = pgTable(
   "pecas",
   {
     id: serial("id").primaryKey(),
-    codigo: varchar("codigo", { length: 64 }),
-    nome: varchar("nome", { length: 255 }).notNull(),
+    codigo: varchar("codigo", { length: 64 }).unique(),
+    nome: varchar("nome", { length: 255 }).notNull().unique(),
     unidade: varchar("unidade", { length: 16 }).notNull().default("un"),
     saldo: integer("saldo").notNull().default(0),
     minimo: integer("minimo").notNull().default(0),

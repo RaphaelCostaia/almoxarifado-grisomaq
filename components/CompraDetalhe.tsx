@@ -15,6 +15,8 @@ import {
 import { formatBR, formatBRDia } from "@/lib/date";
 import { useCurrentUserName } from "@/lib/user";
 import { useIsAdmin } from "./SessionProvider";
+import { ConfirmDialog } from "./PedidoDetalheDialog";
+import { FileInput } from "./FileInput";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -31,6 +33,7 @@ export function CompraDetalhe({ id }: { id: number }) {
   const [nf, setNf] = useState("");
   const [nfFile, setNfFile] = useState<File | null>(null);
   const [confirmarReceber, setConfirmarReceber] = useState(false);
+  const [confirmCancelar, setConfirmCancelar] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
   if (!data) {
@@ -252,9 +255,9 @@ export function CompraDetalhe({ id }: { id: number }) {
         )}
         {["rascunho", "aprovada", "comprada"].includes(c.status) && (
           <button
-            className="ml-auto rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+            className="btn-danger ml-auto"
             disabled={salvando}
-            onClick={() => avancar("cancelada")}
+            onClick={() => setConfirmCancelar(true)}
           >
             Cancelar solicitação
           </button>
@@ -282,14 +285,30 @@ export function CompraDetalhe({ id }: { id: number }) {
         </ul>
       </div>
 
+      {confirmCancelar && (
+        <ConfirmDialog
+          titulo="Cancelar esta solicitação?"
+          descricao="A compra ficará com status Cancelada. Você pode criar uma nova depois."
+          confirmar="Sim, cancelar"
+          tone="danger"
+          onClose={() => setConfirmCancelar(false)}
+          onConfirm={async () => {
+            setConfirmCancelar(false);
+            await avancar("cancelada");
+          }}
+        />
+      )}
+
       {/* Modal receber com NF */}
       {confirmarReceber && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-oliva-900/60 p-4"
+          className="fixed inset-0 z-40 flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ background: "rgba(0,0,0,0.6)" }}
           onClick={() => setConfirmarReceber(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-oliva-100 bg-creme-50 p-5"
+            className="card w-full max-w-md p-5"
+            style={{ boxShadow: "var(--shadow-md)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-2 text-lg font-black text-oliva-900">
@@ -316,11 +335,11 @@ export function CompraDetalhe({ id }: { id: number }) {
             <label className="label-form mt-3">
               Arquivo da NF (opcional)
             </label>
-            <input
-              type="file"
+            <FileInput
+              file={nfFile}
+              onFile={setNfFile}
               accept="application/pdf,image/*"
-              onChange={(e) => setNfFile(e.target.files?.[0] ?? null)}
-              className="text-sm text-oliva-800"
+              label="Anexar NF"
             />
             <div className="mt-4 flex justify-end gap-2">
               <button

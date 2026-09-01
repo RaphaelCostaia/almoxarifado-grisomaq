@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { pedidos, pedidoEventos, pecas, MOTIVOS_PEDIDO } from "@/db/schema";
+import { pedidos, pedidoEventos, pecas } from "@/db/schema";
 import { exigirSessaoApi } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ const NovoPedidoSchema = z.object({
   descricao: z.string().min(1),
   quantidade: z.coerce.number().int().min(1),
   unidade: z.string().min(1).max(16).default("un"),
-  motivo: z.enum(MOTIVOS_PEDIDO),
+  motivo: z.string().min(1).max(64),
   prioridade: z.enum(["normal", "urgente"]).default("normal"),
   observacoes: z.string().optional().nullable(),
   fotoUrl: z.string().url().optional().nullable(),

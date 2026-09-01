@@ -1,47 +1,44 @@
 // Rodar com: `npm run db:seed`
+// Seed idempotente — pode rodar N vezes sem duplicar dados.
 import bcrypt from "bcryptjs";
+import { sql } from "drizzle-orm";
 import { db } from "./client";
 import { pecas, pedidos, pedidoEventos, usuarios } from "./schema";
 
 async function main() {
-  console.log("Criando admin inicial (se ainda não existir)…");
+  console.log("[seed] Criando admin (se ainda não existir)…");
   const senhaAdmin = process.env.ADMIN_SENHA ?? "grisomaq123";
   const hash = await bcrypt.hash(senhaAdmin, 10);
-  try {
-    await db.insert(usuarios).values({
-      nome: "admin",
-      senhaHash: hash,
-      role: "admin",
-      ativo: 1,
-    });
+  const admins = await db
+    .insert(usuarios)
+    .values({ nome: "admin", senhaHash: hash, role: "admin", ativo: 1 })
+    .onConflictDoNothing()
+    .returning();
+  if (admins.length > 0) {
     console.log(
-      `→ Admin criado. Usuário: 'admin' | Senha: '${senhaAdmin}' (troque no /admin/usuarios)`
+      `[seed] → admin criado. Login: 'admin' | Senha: '${senhaAdmin}'`
     );
-  } catch (e: any) {
-    if (String(e?.message ?? "").includes("duplicate")) {
-      console.log("→ Admin já existia, pulei.");
-    } else {
-      throw e;
-    }
+  } else {
+    console.log("[seed] → admin já existia, pulei.");
   }
 
-  // Cria um funcionário exemplo pra testar o fluxo
-  try {
-    await db.insert(usuarios).values({
+  console.log("[seed] Criando funcionário exemplo…");
+  const fs = await db
+    .insert(usuarios)
+    .values({
       nome: "matheus",
       senhaHash: await bcrypt.hash("matheus123", 10),
       role: "funcionario",
       ativo: 1,
-    });
-    console.log(
-      "→ Funcionário exemplo criado. Usuário: 'matheus' | Senha: 'matheus123'"
-    );
-  } catch {
-    // ok
+    })
+    .onConflictDoNothing()
+    .returning();
+  if (fs.length > 0) {
+    console.log("[seed] → matheus criado. Login: 'matheus' | Senha: 'matheus123'");
   }
 
-  console.log("Semeando peças…");
-  const [ventilador, abracadeira, parafuso] = await db
+  console.log("[seed] Semeando peças (idempotente por codigo)…");
+  const inserted = await db
     .insert(pecas)
     .values([
       {
@@ -72,48 +69,54 @@ async function main() {
         localizacao: "Gaveta B3",
       },
     ])
+    .onConflictDoNothing({ target: pecas.codigo })
     .returning();
 
-  console.log("Semeando pedido de exemplo…");
-  const [pedidoEntregue] = await db
-    .insert(pedidos)
-    .values({
-      frota: "Frota 95",
-      descricao: "1 ventilador do ar condicionado",
-      quantidade: 1,
-      unidade: "un",
-      motivo: "Quebra / manutenção corretiva",
-      solicitante: "matheus",
-      prioridade: "normal",
-      status: "entregue",
-      pecaId: ventilador.id,
-      entregueEm: new Date(),
-    })
-    .returning();
+  console.log(`[seed] → ${inserted.length} peças novas inseridas.`);
 
-  await db.insert(pedidoEventos).values([
-    { pedidoId: pedidoEntregue.id, autor: "matheus", texto: "Pedido registrado." },
-    {
-      pedidoId: pedidoEntregue.id,
-      autor: "admin",
-      texto: "Peça localizada em estoque — separando.",
-    },
-    {
-      pedidoId: pedidoEntregue.id,
-      autor: "admin",
-      texto: "Peça entregue à frota.",
-    },
-  ]);
+  // Pedido de exemplo só se ainda não há nenhum
+  const total = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(pedidos);
+  if ((total[0]?.c ?? 0) === 0) {
+    console.log("[seed] Criando pedido exemplo…");
+    const [vent] = await db.select().from(pecas).where(sql`codigo = 'AC-VENT-01'`);
+    const [ped] = await db
+      .insert(pedidos)
+      .values({
+        frota: "Frota 95",
+        descricao: "1 ventilador do ar condicionado",
+        quantidade: 1,
+        unidade: "un",
+        motivo: "Quebra / manutenção corretiva",
+        solicitante: "matheus",
+        prioridade: "normal",
+        status: "entregue",
+        pecaId: vent?.id ?? null,
+        entregueEm: new Date(),
+      })
+      .returning();
+    await db.insert(pedidoEventos).values([
+      { pedidoId: ped.id, autor: "matheus", texto: "Pedido registrado." },
+      {
+        pedidoId: ped.id,
+        autor: "admin",
+        texto: "Peça localizada em estoque — separando.",
+      },
+      { pedidoId: ped.id, autor: "admin", texto: "Peça entregue à frota." },
+    ]);
+    console.log("[seed] → pedido exemplo criado.");
+  } else {
+    console.log(
+      `[seed] → já existem ${total[0]?.c} pedidos, pulei o exemplo.`
+    );
+  }
 
-  console.log("✓ Seed concluído.");
-  console.log("");
-  console.log("→ Acesse /login com:");
-  console.log("   admin    / grisomaq123   (administrador)");
-  console.log("   matheus  / matheus123    (funcionário)");
+  console.log("[seed] ✓ Concluído.");
   process.exit(0);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error("[seed] ERRO:", err);
   process.exit(1);
 });
