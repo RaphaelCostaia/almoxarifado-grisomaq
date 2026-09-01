@@ -12,6 +12,7 @@ import {
   STATUS_COMPRA_LABELS,
 } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
+import { criarNotificacao } from "@/lib/notificar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -139,6 +140,22 @@ export async function PATCH(
           }
         }
       });
+
+      // Notifica solicitante (fora da transação, silencioso)
+      if (atual.pedidoId) {
+        const [ped] = await db
+          .select()
+          .from(pedidos)
+          .where(eq(pedidos.id, atual.pedidoId));
+        if (ped) {
+          await criarNotificacao({
+            destinatario: ped.solicitante,
+            autor: dados.autor,
+            pedidoId: ped.id,
+            texto: `Sua peça chegou! Pedido #${ped.id} (${ped.descricao}) está aguardando retirada.`,
+          });
+        }
+      }
     }
   }
 

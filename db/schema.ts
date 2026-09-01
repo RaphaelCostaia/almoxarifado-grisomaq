@@ -73,6 +73,7 @@ export const pedidos = pgTable(
   {
     id: serial("id").primaryKey(),
     frota: varchar("frota", { length: 64 }).notNull(),
+    local: varchar("local", { length: 64 }),
     descricao: text("descricao").notNull(),
     quantidade: integer("quantidade").notNull().default(1),
     unidade: varchar("unidade", { length: 16 }).notNull().default("un"),
@@ -96,6 +97,26 @@ export const pedidos = pgTable(
   (t) => ({
     statusIdx: index("pedidos_status_idx").on(t.status),
     frotaIdx: index("pedidos_frota_idx").on(t.frota),
+    localIdx: index("pedidos_local_idx").on(t.local),
+  })
+);
+
+export const notificacoes = pgTable(
+  "notificacoes",
+  {
+    id: serial("id").primaryKey(),
+    destinatario: varchar("destinatario", { length: 64 }).notNull(),
+    pedidoId: integer("pedido_id").references(() => pedidos.id, {
+      onDelete: "cascade",
+    }),
+    texto: text("texto").notNull(),
+    lida: integer("lida").notNull().default(0),
+    criadoEm: timestamp("criado_em", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    destIdx: index("notificacoes_dest_idx").on(t.destinatario, t.lida),
   })
 );
 
@@ -204,6 +225,8 @@ export type Compra = typeof compras.$inferSelect;
 export type NovaCompra = typeof compras.$inferInsert;
 export type CompraEvento = typeof compraEventos.$inferSelect;
 export type Movimentacao = typeof movimentacoes.$inferSelect;
+export type Notificacao = typeof notificacoes.$inferSelect;
+export type NovaNotificacao = typeof notificacoes.$inferInsert;
 
 export const STATUS_PEDIDO_LABELS: Record<Pedido["status"], string> = {
   solicitada: "Solicitada",

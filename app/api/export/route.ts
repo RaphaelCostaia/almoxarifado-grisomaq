@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     rows.map((r) => ({
       ID: r.id,
       Frota: r.frota,
+      Local: r.local ?? "",
       Descricao: r.descricao,
       Quantidade: r.quantidade,
       Unidade: r.unidade,

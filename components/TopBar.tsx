@@ -8,6 +8,9 @@ type Props = {
   frota: string;
   frotas: string[];
   onFrota: (v: string) => void;
+  local: string;
+  locais: string[];
+  onLocal: (v: string) => void;
   soUrgentes: boolean;
   onSoUrgentes: (v: boolean) => void;
   soAtraso: boolean;
@@ -35,7 +38,7 @@ export function TopBar(p: Props) {
         />
       </div>
       <select
-        className="input-base max-w-[180px]"
+        className="input-base max-w-[160px]"
         value={p.frota}
         onChange={(e) => p.onFrota(e.target.value)}
       >
@@ -43,6 +46,19 @@ export function TopBar(p: Props) {
         {p.frotas.map((f) => (
           <option key={f} value={f}>
             {f}
+          </option>
+        ))}
+      </select>
+      <select
+        className="input-base max-w-[160px]"
+        value={p.local}
+        onChange={(e) => p.onLocal(e.target.value)}
+        title="Filtrar por local de trabalho"
+      >
+        <option value="todos">Todos os locais</option>
+        {p.locais.map((l) => (
+          <option key={l} value={l}>
+            {l}
           </option>
         ))}
       </select>

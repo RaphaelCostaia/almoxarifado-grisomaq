@@ -24,6 +24,7 @@ type Props = {
   onChanged: () => void;
   onDuplicar?: (dados: {
     frota: string;
+    local?: string;
     descricao: string;
     quantidade: number;
     unidade: string;
@@ -163,19 +164,16 @@ export function PedidoDetalheDialog({
       </h2>
 
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Frota / Frente" v={pedido.frota} />
+        <Field label="Frota / Equipamento" v={pedido.frota} />
+        <Field label="Local de trabalho" v={pedido.local ?? "—"} />
         <Field label="Solicitante" v={pedido.solicitante} />
+        <Field label="Motivo" v={pedido.motivo} />
         <Field label="Solicitado em" v={formatBR(pedido.criadoEm)} />
         <Field
           label="Última atualização"
           v={`${formatBR(pedido.atualizadoEm)} · ${diasDesde(
             pedido.atualizadoEm
           )}d`}
-        />
-        <Field label="Motivo" v={pedido.motivo} />
-        <Field
-          label="Prioridade"
-          v={pedido.prioridade === "urgente" ? "🔴 Urgente" : "Normal"}
         />
       </div>
 
@@ -286,6 +284,7 @@ export function PedidoDetalheDialog({
             onClick={() =>
               onDuplicar({
                 frota: pedido.frota,
+                local: pedido.local ?? undefined,
                 descricao: pedido.descricao,
                 quantidade: pedido.quantidade,
                 unidade: pedido.unidade,

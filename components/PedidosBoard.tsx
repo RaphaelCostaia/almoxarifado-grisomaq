@@ -42,6 +42,7 @@ export function PedidosBoard() {
   const isAdmin = useIsAdmin();
   const [q, setQ] = useState("");
   const [frota, setFrota] = useState("todas");
+  const [local, setLocal] = useState("todos");
   const [soUrgentes, setSoUrgentes] = useState(false);
   const [soAtraso, setSoAtraso] = useState(false);
   const [ocultarFinalizados, setOcultarFinalizados] = useState(false);
@@ -56,6 +57,7 @@ export function PedidosBoard() {
     if (f) {
       setQ(f.q ?? "");
       setFrota(f.frota ?? "todas");
+      setLocal(f.local ?? "todos");
       setSoUrgentes(!!f.soUrgentes);
       setSoAtraso(!!f.soAtraso);
       setOcultarFinalizados(!!f.ocultarFinalizados);
@@ -68,18 +70,27 @@ export function PedidosBoard() {
 
   // Persiste sempre que muda
   useEffect(() => {
-    salvarFiltros({ q, frota, soUrgentes, soAtraso, ocultarFinalizados });
-  }, [q, frota, soUrgentes, soAtraso, ocultarFinalizados]);
+    salvarFiltros({
+      q,
+      frota,
+      local,
+      soUrgentes,
+      soAtraso,
+      ocultarFinalizados,
+    });
+  }, [q, frota, local, soUrgentes, soAtraso, ocultarFinalizados]);
 
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (frota !== "todas") params.set("frota", frota);
+  if (local !== "todos") params.set("local", local);
   if (soUrgentes) params.set("urgente", "1");
   if (ocultarFinalizados) params.set("ocultarFinalizados", "1");
 
   const { data, isLoading, mutate } = useSWR<{
     pedidos: Pedido[];
     frotas: string[];
+    locais: string[];
   }>(`/api/pedidos?${params.toString()}`, fetcher, {
     refreshInterval: 4000,
     revalidateOnFocus: true,
@@ -158,6 +169,9 @@ export function PedidosBoard() {
         frota={frota}
         frotas={data?.frotas ?? []}
         onFrota={setFrota}
+        local={local}
+        locais={data?.locais ?? []}
+        onLocal={setLocal}
         soUrgentes={soUrgentes}
         onSoUrgentes={setSoUrgentes}
         soAtraso={soAtraso}
@@ -208,6 +222,7 @@ export function PedidosBoard() {
       {novo && (
         <NovoPedidoDialog
           prefill={prefill ?? undefined}
+          locaisConhecidos={data?.locais ?? []}
           onClose={() => {
             setNovo(false);
             setPrefill(null);

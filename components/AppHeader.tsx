@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificacoesSino } from "./NotificacoesSino";
 import { useState } from "react";
 
 type Tab = { href: string; label: string; adminOnly?: boolean };
@@ -98,6 +99,7 @@ export function AppHeader({ usuario }: Props) {
               ao vivo
             </span>
           </div>
+          <NotificacoesSino />
           <ThemeToggle />
           <div className="relative">
             <button

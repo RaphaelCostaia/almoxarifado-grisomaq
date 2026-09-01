@@ -85,6 +85,7 @@ async function main() {
       .insert(pedidos)
       .values({
         frota: "Frota 95",
+        local: "Frente 34",
         descricao: "1 ventilador do ar condicionado",
         quantidade: 1,
         unidade: "un",

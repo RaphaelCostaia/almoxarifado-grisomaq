@@ -63,10 +63,11 @@ export function PedidoCard({
             </span>
           </div>
         )}
-        <div className="flex items-center gap-1.5">
-          <span className="chip">
-            {pedido.frota}
-          </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="chip">{pedido.frota}</span>
+          {pedido.local && (
+            <span className="chip chip-info">📍 {pedido.local}</span>
+          )}
           {pedido.quantidade > 1 && (
             <span
               className="font-mono text-[10px] font-bold tabular-nums"

@@ -10,6 +10,7 @@ import {
   STATUS_PEDIDO_LABELS,
 } from "@/db/schema";
 import { exigirAdminApi, exigirSessaoApi } from "@/lib/api-auth";
+import { criarNotificacao } from "@/lib/notificar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -161,6 +162,33 @@ export async function PATCH(
       pedidoId: id,
       autor,
       texto: e.texto,
+    });
+  }
+
+  // Avisa o solicitante quando algo relevante muda
+  if (status && status !== atual.status) {
+    const label = STATUS_PEDIDO_LABELS[status];
+    let texto = `Seu pedido #${atual.id} (${atual.descricao}) foi atualizado para: ${label}.`;
+    if (status === "aguardando_retirada") {
+      texto = `Sua peça está pronta pra retirada! Pedido #${atual.id} (${atual.descricao}).`;
+    } else if (status === "entregue") {
+      texto = `Seu pedido #${atual.id} foi entregue: ${atual.descricao}.`;
+    } else if (status === "cancelada") {
+      texto = `Seu pedido #${atual.id} foi cancelado: ${atual.descricao}.`;
+    }
+    await criarNotificacao({
+      destinatario: atual.solicitante,
+      autor,
+      pedidoId: atual.id,
+      texto,
+    });
+  }
+  if (prioridade === "urgente" && atual.prioridade !== "urgente") {
+    await criarNotificacao({
+      destinatario: atual.solicitante,
+      autor,
+      pedidoId: atual.id,
+      texto: `Seu pedido #${atual.id} foi marcado como URGENTE.`,
     });
   }
 

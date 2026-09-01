@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const NovoPedidoSchema = z.object({
   frota: z.string().min(1).max(64),
+  local: z.string().max(64).optional().nullable(),
   descricao: z.string().min(1),
   quantidade: z.coerce.number().int().min(1),
   unidade: z.string().min(1).max(16).default("un"),
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl;
   const q = url.searchParams.get("q")?.trim().toLowerCase();
   const frota = url.searchParams.get("frota");
+  const local = url.searchParams.get("local");
   const urgente = url.searchParams.get("urgente") === "1";
   const ocultarFinalizados =
     url.searchParams.get("ocultarFinalizados") === "1";
@@ -34,12 +36,16 @@ export async function GET(req: NextRequest) {
       or(
         ilike(pedidos.descricao, `%${q}%`),
         ilike(pedidos.frota, `%${q}%`),
-        ilike(pedidos.solicitante, `%${q}%`)
+        ilike(pedidos.solicitante, `%${q}%`),
+        ilike(pedidos.local, `%${q}%`)
       )
     );
   }
   if (frota && frota !== "todas") {
     conditions.push(eq(pedidos.frota, frota));
+  }
+  if (local && local !== "todos") {
+    conditions.push(eq(pedidos.local, local));
   }
   if (urgente) {
     conditions.push(eq(pedidos.prioridade, "urgente"));
@@ -59,10 +65,14 @@ export async function GET(req: NextRequest) {
   const frotasDistinct = await db
     .selectDistinct({ frota: pedidos.frota })
     .from(pedidos);
+  const locaisDistinct = await db
+    .selectDistinct({ local: pedidos.local })
+    .from(pedidos);
 
   return NextResponse.json({
     pedidos: rows,
     frotas: frotasDistinct.map((f) => f.frota).filter(Boolean),
+    locais: locaisDistinct.map((l) => l.local).filter(Boolean),
   });
 }
 
@@ -100,6 +110,7 @@ export async function POST(req: NextRequest) {
     .insert(pedidos)
     .values({
       frota: dados.frota,
+      local: dados.local ?? null,
       descricao: dados.descricao,
       quantidade: dados.quantidade,
       unidade: dados.unidade,

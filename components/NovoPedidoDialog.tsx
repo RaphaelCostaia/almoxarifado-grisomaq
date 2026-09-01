@@ -10,6 +10,7 @@ import clsx from "clsx";
 
 export type PedidoPrefill = {
   frota?: string;
+  local?: string;
   descricao?: string;
   quantidade?: number;
   unidade?: string;
@@ -23,11 +24,26 @@ type Props = {
   onClose: () => void;
   onCreated: () => void;
   prefill?: PedidoPrefill;
+  locaisConhecidos?: string[];
 };
 
-export function NovoPedidoDialog({ onClose, onCreated, prefill }: Props) {
+const LOCAIS_SUGERIDOS_DEFAULT = [
+  "Frente 15",
+  "Frente 34",
+  "Frente 103",
+  "Pátio",
+  "Oficina",
+];
+
+export function NovoPedidoDialog({
+  onClose,
+  onCreated,
+  prefill,
+  locaisConhecidos = [],
+}: Props) {
   const { nome } = useSession();
   const [frota, setFrota] = useState(prefill?.frota ?? "");
+  const [local, setLocal] = useState(prefill?.local ?? "");
   const [descricao, setDescricao] = useState(prefill?.descricao ?? "");
   const [peca, setPeca] = useState<Peca | null>(null);
   const [qtd, setQtd] = useState<number>(prefill?.quantidade ?? 1);
@@ -73,6 +89,7 @@ export function NovoPedidoDialog({ onClose, onCreated, prefill }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           frota,
+          local: local.trim() || null,
           descricao: peca ? peca.nome : descricao,
           quantidade: qtd,
           unidade: peca ? peca.unidade : unidade,
@@ -101,15 +118,35 @@ export function NovoPedidoDialog({ onClose, onCreated, prefill }: Props) {
   return (
     <Modal onClose={onClose} tituloBadge="Novo pedido de peça">
       <form onSubmit={submit} className="space-y-4">
-        <div>
-          <label className="label-form">Frota / Frente / Equipamento</label>
-          <input
-            className="input-base"
-            required
-            placeholder="Ex: Frota 95, Frente 103, Trator 5508"
-            value={frota}
-            onChange={(e) => setFrota(e.target.value)}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label-form">Frota / Equipamento</label>
+            <input
+              className="input-base"
+              required
+              placeholder="Ex: Frota 95, Trator 5508"
+              value={frota}
+              onChange={(e) => setFrota(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label-form">Local de trabalho</label>
+            <input
+              className="input-base"
+              list="locais-conhecidos"
+              placeholder="Ex: Frente 15, Frente 103, Pátio"
+              value={local}
+              onChange={(e) => setLocal(e.target.value)}
+              maxLength={64}
+            />
+            <datalist id="locais-conhecidos">
+              {[
+                ...new Set([...locaisConhecidos, ...LOCAIS_SUGERIDOS_DEFAULT]),
+              ].map((l) => (
+                <option key={l} value={l} />
+              ))}
+            </datalist>
+          </div>
         </div>
         <div>
           <label className="label-form">Peça / Descrição</label>
