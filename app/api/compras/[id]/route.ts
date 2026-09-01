@@ -56,7 +56,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const admin = await exigirAdminApi();
@@ -69,8 +69,8 @@ export async function DELETE(
   if (!c) {
     return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
   }
-  // Só permite excluir rascunho — depois já mexeu em pedidos vinculados/estoque
-  if (c.status !== "rascunho") {
+  const forcar = req.nextUrl.searchParams.get("force") === "true";
+  if (c.status !== "rascunho" && !forcar) {
     return NextResponse.json(
       {
         error: "nao_pode_excluir",
@@ -81,7 +81,7 @@ export async function DELETE(
     );
   }
   await db.delete(compras).where(eq(compras.id, id));
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, forcado: forcar });
 }
 
 export async function PATCH(

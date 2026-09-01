@@ -71,7 +71,11 @@ export function Dashboard() {
           tone="brand"
         />
         <Kpi
-          value={data.tempoMedioDias.toFixed(1) + " d"}
+          value={
+            data.tempoMedioDias > 0 && data.tempoMedioDias < 0.5
+              ? "< 1 dia"
+              : Math.max(0, data.tempoMedioDias).toFixed(1) + " d"
+          }
           label="Tempo médio"
           hint="do pedido à entrega"
         />

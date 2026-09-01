@@ -7,6 +7,7 @@ import Link from "next/link";
 import { PecaAutocomplete } from "./PecaAutocomplete";
 import { useCurrentUserName } from "@/lib/user";
 import { useIsAdmin } from "./SessionProvider";
+import { AutoTextarea } from "./AutoTextarea";
 import type { Peca, Pedido } from "@/db/schema";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -244,8 +245,9 @@ export function NovaCompraForm({
 
         <div>
           <label className="label-form">Motivo / observações</label>
-          <textarea
-            rows={3}
+          <AutoTextarea
+            minRows={3}
+            maxRows={10}
             className="input-base"
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}

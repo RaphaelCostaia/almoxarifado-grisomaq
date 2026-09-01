@@ -275,6 +275,17 @@ export function CompraDetalhe({ id }: { id: number }) {
             Cancelar solicitação
           </button>
         )}
+        {["recebida", "cancelada"].includes(c.status) && (
+          <button
+            className="btn-ghost ml-auto !text-[11px]"
+            style={{ color: "var(--text-dim)" }}
+            disabled={salvando}
+            onClick={() => setConfirmExcluir(true)}
+            title="Exclusão forçada — só use pra limpar registros de teste"
+          >
+            🗑 Excluir permanentemente
+          </button>
+        )}
       </div>
       )}
 
@@ -313,16 +324,26 @@ export function CompraDetalhe({ id }: { id: number }) {
       )}
       {confirmExcluir && (
         <ConfirmDialog
-          titulo="Excluir esta solicitação de compra?"
-          descricao="Isso apaga o rascunho PERMANENTEMENTE — não fica no histórico. Use apenas quando você criou por engano. Se já foi aprovada/comprada, use 'Cancelar' pra manter a rastreabilidade."
+          titulo={
+            c.status === "rascunho"
+              ? "Excluir esta solicitação de compra?"
+              : "Excluir compra já efetivada?"
+          }
+          descricao={
+            c.status === "rascunho"
+              ? "Isso apaga o rascunho PERMANENTEMENTE — não fica no histórico. Use apenas quando criou por engano."
+              : `Essa compra está "${c.status}" e já pode ter movimentado o estoque. Excluir vai apagar o registro mas o saldo do estoque atual NÃO será desfeito. Use apenas pra limpar dados de teste.`
+          }
           confirmar="Sim, excluir definitivo"
           tone="danger"
           onClose={() => setConfirmExcluir(false)}
           onConfirm={async () => {
             setSalvando(true);
-            const res = await fetch(`/api/compras/${id}`, {
-              method: "DELETE",
-            });
+            const url =
+              c.status === "rascunho"
+                ? `/api/compras/${id}`
+                : `/api/compras/${id}?force=true`;
+            const res = await fetch(url, { method: "DELETE" });
             setSalvando(false);
             if (!res.ok) {
               const j = await res.json().catch(() => ({}));

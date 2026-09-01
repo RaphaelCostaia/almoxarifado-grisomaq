@@ -42,7 +42,7 @@ export async function GET() {
 
   // Tempo médio de atendimento (entrega) em dias, últimos 30 dias
   const tempoMedio = await db.execute(sql`
-    SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (entregue_em - criado_em)) / 86400.0), 0)::float as dias
+    SELECT COALESCE(GREATEST(0, AVG(EXTRACT(EPOCH FROM (entregue_em - criado_em)) / 86400.0)), 0)::float as dias
     FROM pedidos
     WHERE status = 'entregue' AND entregue_em >= now() - interval '30 days'
   `);

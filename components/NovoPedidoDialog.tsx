@@ -6,6 +6,7 @@ import { PecaAutocomplete } from "./PecaAutocomplete";
 import { useCurrentUserName } from "@/lib/user";
 import { useSession } from "./SessionProvider";
 import { FileInput } from "./FileInput";
+import { AutoTextarea } from "./AutoTextarea";
 import clsx from "clsx";
 
 export type PedidoPrefill = {
@@ -288,8 +289,9 @@ export function NovoPedidoDialog({
         </div>
         <div>
           <label className="label-form">Observações (opcional)</label>
-          <textarea
-            rows={3}
+          <AutoTextarea
+            minRows={3}
+            maxRows={10}
             className="input-base"
             placeholder="Detalhes técnicos, especificação, etc."
             value={observacoes}
