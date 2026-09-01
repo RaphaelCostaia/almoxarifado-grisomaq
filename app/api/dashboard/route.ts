@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pedidos, compras, movimentacoes } from "@/db/schema";
-import { exigirSessaoApi } from "@/lib/api-auth";
+import { exigirAdminApi } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const auth = await exigirSessaoApi();
+  const auth = await exigirAdminApi();
   if (!auth.ok) return auth.res;
 
   // Totais globais

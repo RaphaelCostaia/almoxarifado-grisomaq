@@ -50,8 +50,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // /admin só para admin
-  if (sessao && pathname.startsWith("/admin") && sessao.role !== "admin") {
+  // /admin e /dashboard só para admin
+  if (
+    sessao &&
+    (pathname.startsWith("/admin") || pathname.startsWith("/dashboard")) &&
+    sessao.role !== "admin"
+  ) {
     const url = req.nextUrl.clone();
     url.pathname = "/pedidos";
     url.search = "";
