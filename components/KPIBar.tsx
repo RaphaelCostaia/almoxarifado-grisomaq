@@ -17,11 +17,26 @@ export function KPIBar() {
   });
   const k = data ?? { emAberto: 0, urgentes: 0, emAtraso: 0, entregues7d: 0 };
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <Item n={k.emAberto} label="Em aberto" />
-      <Item n={k.urgentes} label="Urgentes" tone={k.urgentes > 0 ? "vermelho" : undefined} />
-      <Item n={k.emAtraso} label="Em atraso (2d+)" tone={k.emAtraso > 0 ? "amarelo" : undefined} />
-      <Item n={k.entregues7d} label="Entregues (7d)" />
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <Item n={k.emAberto} label="Em aberto" hint="não entregues" />
+      <Item
+        n={k.urgentes}
+        label="Urgentes"
+        hint="prioridade alta"
+        tone={k.urgentes > 0 ? "danger" : undefined}
+      />
+      <Item
+        n={k.emAtraso}
+        label="Em atraso"
+        hint="parados 2d+"
+        tone={k.emAtraso > 0 ? "warning" : undefined}
+      />
+      <Item
+        n={k.entregues7d}
+        label="Entregues"
+        hint="últimos 7 dias"
+        tone="brand"
+      />
     </div>
   );
 }
@@ -29,25 +44,53 @@ export function KPIBar() {
 function Item({
   n,
   label,
+  hint,
   tone,
 }: {
   n: number;
   label: string;
-  tone?: "vermelho" | "amarelo";
+  hint: string;
+  tone?: "danger" | "warning" | "brand";
 }) {
-  const border =
-    tone === "vermelho"
-      ? "border-red-300"
-      : tone === "amarelo"
-      ? "border-amber-300"
-      : "border-oliva-100";
+  const colorVar =
+    tone === "danger"
+      ? "var(--danger)"
+      : tone === "warning"
+      ? "var(--warning)"
+      : tone === "brand"
+      ? "var(--brand)"
+      : "var(--text)";
+  const borderVar =
+    tone === "danger"
+      ? "var(--danger-border)"
+      : tone === "warning"
+      ? "var(--warning-soft)"
+      : "var(--border)";
   return (
-    <div className={`card-base border ${border} px-4 py-3`}>
-      <div className="text-3xl font-black leading-none text-oliva-900">
-        {n}
+    <div
+      className="card px-3.5 py-3"
+      style={{ borderColor: borderVar }}
+    >
+      <div className="flex items-baseline justify-between">
+        <div
+          className="font-mono text-3xl font-black leading-none tabular-nums"
+          style={{ color: colorVar }}
+        >
+          {n}
+        </div>
+        {tone === "danger" && n > 0 && <span className="live-dot" style={{ background: "var(--danger)", boxShadow: "0 0 0 3px var(--danger-soft)" }} />}
       </div>
-      <div className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-oliva-700">
+      <div
+        className="mt-2 font-mono text-[10px] font-semibold uppercase tracking-widest"
+        style={{ color: "var(--text-muted)" }}
+      >
         {label}
+      </div>
+      <div
+        className="mt-0.5 text-[11px]"
+        style={{ color: "var(--text-dim)" }}
+      >
+        {hint}
       </div>
     </div>
   );

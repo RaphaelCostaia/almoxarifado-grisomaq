@@ -28,13 +28,16 @@ export function EstoqueLista() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-oliva-100 bg-creme-50 p-3 shadow-sm">
+      <div className="card flex flex-wrap items-center gap-2 p-2.5">
         <div className="relative min-w-[240px] flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-oliva-500">
-            🔎
+          <span
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm"
+            style={{ color: "var(--text-muted)" }}
+          >
+            ⌕
           </span>
           <input
-            className="input-base pl-9"
+            className="input-base pl-8"
             placeholder="Buscar peça por nome ou código…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -42,37 +45,43 @@ export function EstoqueLista() {
         </div>
         {isAdmin && (
           <div className="ml-auto flex items-center gap-2">
-            <Link href="/compras/nova" className="btn-secondary">
-              📝 Nova solicitação de compra
+            <Link href="/compras/nova" className="btn-secondary !text-xs">
+              Solicitar compra
             </Link>
             <button className="btn-primary" onClick={() => setNova(true)}>
-              + Cadastrar peça
+              <span className="text-base leading-none">＋</span>
+              Cadastrar peça
             </button>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Res
-          n={r.total}
-          label="Peças cadastradas"
-        />
+      <div className="grid grid-cols-3 gap-2">
+        <Res n={r.total} label="Peças" hint="cadastradas" />
         <Res
           n={r.repor}
-          label="Precisam repor"
-          tone={r.repor > 0 ? "amarelo" : undefined}
+          label="Repor"
+          hint="abaixo do mínimo"
+          tone={r.repor > 0 ? "warning" : undefined}
         />
         <Res
           n={r.criticos}
-          label="Zeradas / críticas"
-          tone={r.criticos > 0 ? "vermelho" : undefined}
+          label="Críticas"
+          hint="saldo zerado"
+          tone={r.criticos > 0 ? "danger" : undefined}
         />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-oliva-100 bg-creme-50 shadow-sm">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-oliva-800 text-creme-50">
-            <tr>
+          <thead>
+            <tr
+              className="border-b"
+              style={{
+                background: "var(--surface-3)",
+                borderColor: "var(--border)",
+              }}
+            >
               <Th>Peça</Th>
               <Th className="text-right">Saldo</Th>
               <Th>Un.</Th>
@@ -87,71 +96,93 @@ export function EstoqueLista() {
               const critico = p.saldo === 0;
               const repor = p.saldo > 0 && p.saldo <= p.minimo;
               return (
-                <tr key={p.id} className="border-t border-oliva-100">
-                  <td className="px-3 py-2">
-                    <div className="font-semibold text-oliva-900">{p.nome}</div>
+                <tr
+                  key={p.id}
+                  className="border-t transition"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <td className="px-3 py-2.5">
+                    <div
+                      className="font-semibold"
+                      style={{ color: "var(--text)" }}
+                    >
+                      {p.nome}
+                    </div>
                     {p.codigo && (
-                      <div className="font-mono text-[11px] text-oliva-600">
+                      <div
+                        className="font-mono text-[10px] uppercase tracking-widest"
+                        style={{ color: "var(--text-muted)" }}
+                      >
                         {p.codigo}
                       </div>
                     )}
                   </td>
-                  <td
-                    className={clsx(
-                      "px-3 py-2 text-right font-mono font-bold",
-                      critico
-                        ? "text-red-600"
-                        : repor
-                        ? "text-amber-700"
-                        : "text-oliva-900"
-                    )}
-                  >
-                    {p.saldo}
+                  <td className="px-3 py-2.5 text-right">
+                    <span
+                      className="font-mono text-base font-black tabular-nums"
+                      style={{
+                        color: critico
+                          ? "var(--danger)"
+                          : repor
+                          ? "var(--warning)"
+                          : "var(--text)",
+                      }}
+                    >
+                      {p.saldo}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 text-oliva-700">{p.unidade}</td>
-                  <td className="px-3 py-2 text-oliva-700">
+                  <td
+                    className="px-3 py-2.5 font-mono text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {p.unidade}
+                  </td>
+                  <td
+                    className="px-3 py-2.5 text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     {p.localizacao || "—"}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono text-oliva-700">
+                  <td
+                    className="px-3 py-2.5 text-right font-mono text-xs tabular-nums"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     {p.minimo} / {p.maximo}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2.5">
                     {critico ? (
-                      <span className="chip !bg-red-100 !text-red-700">
-                        Crítico
-                      </span>
+                      <span className="chip chip-danger">Crítico</span>
                     ) : repor ? (
-                      <span className="chip !bg-amber-100 !text-amber-800">
-                        Repor
-                      </span>
+                      <span className="chip chip-warning">Repor</span>
                     ) : (
-                      <span className="chip !bg-oliva-50 !text-oliva-800">
-                        OK
-                      </span>
+                      <span className="chip chip-brand">OK</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 py-2.5 text-right">
                     {isAdmin ? (
-                      <>
+                      <div className="flex justify-end gap-1">
                         <button
-                          className="btn-ghost text-xs"
+                          className="btn-ghost"
                           onClick={() => setAjusteId(p.id)}
                         >
-                          Ajustar saldo
+                          Ajustar
                         </button>
                         <Link
                           href={{
                             pathname: "/compras/nova",
                             query: { peca: p.id },
                           }}
-                          className="btn-ghost text-xs"
+                          className="btn-ghost"
                         >
-                          Solicitar compra
+                          Comprar
                         </Link>
-                      </>
+                      </div>
                     ) : (
-                      <span className="text-[11px] opacity-50">
-                        somente leitura
+                      <span
+                        className="font-mono text-[10px] uppercase tracking-widest"
+                        style={{ color: "var(--text-dim)" }}
+                      >
+                        —
                       </span>
                     )}
                   </td>
@@ -162,7 +193,8 @@ export function EstoqueLista() {
               <tr>
                 <td
                   colSpan={7}
-                  className="px-3 py-8 text-center text-oliva-500"
+                  className="px-3 py-10 text-center"
+                  style={{ color: "var(--text-dim)" }}
                 >
                   Nenhuma peça encontrada.
                 </td>
@@ -205,9 +237,10 @@ function Th({
   return (
     <th
       className={clsx(
-        "px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-widest",
+        "px-3 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-widest",
         className
       )}
+      style={{ color: "var(--text-muted)" }}
     >
       {children}
     </th>
@@ -217,23 +250,42 @@ function Th({
 function Res({
   n,
   label,
+  hint,
   tone,
 }: {
   n: number;
   label: string;
-  tone?: "vermelho" | "amarelo";
+  hint: string;
+  tone?: "danger" | "warning";
 }) {
+  const color =
+    tone === "danger"
+      ? "var(--danger)"
+      : tone === "warning"
+      ? "var(--warning)"
+      : "var(--text)";
   const border =
-    tone === "vermelho"
-      ? "border-red-300"
-      : tone === "amarelo"
-      ? "border-amber-300"
-      : "border-oliva-100";
+    tone === "danger"
+      ? "var(--danger-border)"
+      : tone === "warning"
+      ? "var(--warning-soft)"
+      : "var(--border)";
   return (
-    <div className={`card-base border ${border} px-4 py-3`}>
-      <div className="text-3xl font-black leading-none text-oliva-900">{n}</div>
-      <div className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-oliva-700">
+    <div className="card px-3.5 py-3" style={{ borderColor: border }}>
+      <div
+        className="font-mono text-3xl font-black leading-none tabular-nums"
+        style={{ color }}
+      >
+        {n}
+      </div>
+      <div
+        className="mt-2 font-mono text-[10px] font-semibold uppercase tracking-widest"
+        style={{ color: "var(--text-muted)" }}
+      >
         {label}
+      </div>
+      <div className="mt-0.5 text-[11px]" style={{ color: "var(--text-dim)" }}>
+        {hint}
       </div>
     </div>
   );

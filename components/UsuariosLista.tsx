@@ -54,25 +54,35 @@ export function UsuariosLista() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3 shadow-sm card-base">
+      <div className="card flex flex-wrap items-center gap-3 p-4">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-widest opacity-70">
+          <div
+            className="font-mono text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: "var(--text-muted)" }}
+          >
             Administração
           </div>
-          <h1 className="text-2xl font-black">Usuários</h1>
+          <h1 className="text-xl font-bold tracking-tight">Usuários</h1>
         </div>
         <button
           className="btn-primary ml-auto"
           onClick={() => setNovoAberto(true)}
         >
-          + Novo usuário
+          <span className="text-base leading-none">＋</span>
+          Novo usuário
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border card-base">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-oliva-800 text-creme-50">
-            <tr>
+          <thead>
+            <tr
+              className="border-b"
+              style={{
+                background: "var(--surface-3)",
+                borderColor: "var(--border)",
+              }}
+            >
               <Th>Nome</Th>
               <Th>Papel</Th>
               <Th>Status</Th>
@@ -82,54 +92,70 @@ export function UsuariosLista() {
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-t" style={{ borderColor: "var(--border)" }}>
-                <td className="px-3 py-2 font-semibold">{u.nome}</td>
-                <td className="px-3 py-2">
+              <tr
+                key={u.id}
+                className="border-t"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <td className="px-3 py-2.5">
+                  <div className="font-semibold">{u.nome}</div>
+                </td>
+                <td className="px-3 py-2.5">
                   <select
-                    className="input-base max-w-[160px] py-1"
+                    className="input-base max-w-[180px] !py-1 !text-xs"
                     value={u.role}
                     onChange={(e) =>
-                      trocarPapel(u, e.target.value as "admin" | "funcionario")
+                      trocarPapel(
+                        u,
+                        e.target.value as "admin" | "funcionario"
+                      )
                     }
                   >
                     <option value="admin">Administrador</option>
                     <option value="funcionario">Funcionário</option>
                   </select>
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2.5">
                   <span
                     className={clsx(
                       "chip",
-                      u.ativo === 1
-                        ? "!bg-emerald-100 !text-emerald-800"
-                        : "!bg-neutral-200 !text-neutral-700"
+                      u.ativo === 1 ? "chip-brand" : ""
                     )}
                   >
                     {u.ativo === 1 ? "Ativo" : "Inativo"}
                   </span>
                 </td>
-                <td className="px-3 py-2 font-mono text-xs opacity-70">
+                <td
+                  className="px-3 py-2.5 font-mono text-[11px] tabular-nums"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   {formatBR(u.criadoEm)}
                 </td>
-                <td className="px-3 py-2 text-right">
-                  <button
-                    className="btn-ghost text-xs"
-                    onClick={() => setResetId(u.id)}
-                  >
-                    Redefinir senha
-                  </button>
-                  <button
-                    className="btn-ghost text-xs"
-                    onClick={() => toggleAtivo(u)}
-                  >
-                    {u.ativo === 1 ? "Desativar" : "Ativar"}
-                  </button>
+                <td className="px-3 py-2.5 text-right">
+                  <div className="flex justify-end gap-1">
+                    <button
+                      className="btn-ghost"
+                      onClick={() => setResetId(u.id)}
+                    >
+                      Nova senha
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => toggleAtivo(u)}
+                    >
+                      {u.ativo === 1 ? "Desativar" : "Ativar"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center opacity-60">
+                <td
+                  colSpan={5}
+                  className="px-3 py-10 text-center"
+                  style={{ color: "var(--text-dim)" }}
+                >
                   Nenhum usuário cadastrado ainda.
                 </td>
               </tr>
@@ -160,7 +186,10 @@ export function UsuariosLista() {
 
 function Th({ children }: { children?: React.ReactNode }) {
   return (
-    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-widest">
+    <th
+      className="px-3 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-widest"
+      style={{ color: "var(--text-muted)" }}
+    >
       {children}
     </th>
   );
@@ -203,15 +232,17 @@ function NovoUsuarioDialog({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-oliva-900/60 p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center p-4 backdrop-blur-sm"
+      style={{ background: "rgba(0,0,0,0.6)" }}
       onClick={onClose}
     >
       <form
         onSubmit={submit}
-        className="w-full max-w-md rounded-xl border p-5 shadow-2xl card-base"
+        className="card w-full max-w-md p-5"
+        style={{ boxShadow: "var(--shadow-md)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-3 text-lg font-black">Novo usuário</h3>
+        <h3 className="mb-4 text-lg font-bold tracking-tight">Novo usuário</h3>
         <label className="label-form">Nome de login</label>
         <input
           required
@@ -230,9 +261,11 @@ function NovoUsuarioDialog({
           placeholder="mínimo 6 caracteres"
           minLength={6}
         />
-        <p className="mt-1 text-xs opacity-70">
-          Anote e passe pro funcionário. Ele pode continuar usando ou pedir
-          troca depois.
+        <p
+          className="mt-1 text-[11px]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          Anote e passe pro funcionário.
         </p>
         <label className="label-form mt-3">Papel</label>
         <select
@@ -244,11 +277,18 @@ function NovoUsuarioDialog({
             Funcionário — cria pedidos e acompanha
           </option>
           <option value="admin">
-            Administrador — faz tudo (Kanban, estoque, compras, usuários)
+            Administrador — faz tudo
           </option>
         </select>
         {erro && (
-          <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+          <div
+            className="mt-3 rounded-md border p-2 text-sm"
+            style={{
+              borderColor: "var(--danger-border)",
+              background: "var(--danger-soft)",
+              color: "var(--danger)",
+            }}
+          >
             {erro}
           </div>
         )}
@@ -292,17 +332,24 @@ function ResetSenhaDialog({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-oliva-900/60 p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center p-4 backdrop-blur-sm"
+      style={{ background: "rgba(0,0,0,0.6)" }}
       onClick={onClose}
     >
       <form
         onSubmit={submit}
-        className="w-full max-w-md rounded-xl border p-5 shadow-2xl card-base"
+        className="card w-full max-w-md p-5"
+        style={{ boxShadow: "var(--shadow-md)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-2 text-lg font-black">Redefinir senha</h3>
-        <p className="mb-3 text-sm opacity-80">
-          Nova senha para <b>{nome}</b>. Passe pro usuário.
+        <h3 className="mb-2 text-lg font-bold tracking-tight">
+          Redefinir senha
+        </h3>
+        <p
+          className="mb-3 text-sm"
+          style={{ color: "var(--text-muted)" }}
+        >
+          Nova senha para <b style={{ color: "var(--text)" }}>{nome}</b>.
         </p>
         <input
           required
@@ -314,7 +361,14 @@ function ResetSenhaDialog({
           minLength={6}
         />
         {ok && (
-          <div className="mt-3 rounded-md border border-emerald-300 bg-emerald-50 p-2 text-sm text-emerald-800">
+          <div
+            className="mt-3 rounded-md border p-2 text-sm"
+            style={{
+              borderColor: "var(--brand-border)",
+              background: "var(--brand-soft)",
+              color: "var(--brand)",
+            }}
+          >
             Senha redefinida. Anote e passe pro usuário.
           </div>
         )}

@@ -28,9 +28,12 @@ export function KanbanColuna({
   return (
     <div
       className={clsx(
-        "flex min-h-[420px] w-72 shrink-0 flex-col rounded-lg border bg-creme-50 shadow-sm transition",
-        over ? "border-oliva-500 bg-oliva-50" : "border-oliva-100"
+        "flex min-h-[420px] w-[240px] shrink-0 flex-col overflow-hidden rounded-lg border transition"
       )}
+      style={{
+        background: over ? "var(--brand-soft)" : "var(--surface-2)",
+        borderColor: over ? "var(--brand-border)" : "var(--border)",
+      }}
       onDragOver={(e) => {
         if (!onDrop) return;
         e.preventDefault();
@@ -45,19 +48,33 @@ export function KanbanColuna({
         if (Number.isFinite(id)) onDrop(id);
       }}
     >
-      <div className="flex items-center justify-between border-b border-oliva-100 px-3 py-2">
-        <div className="flex items-center gap-2 text-sm font-bold text-oliva-900">
+      <div
+        className="flex items-center justify-between border-b px-3 py-2"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <div className="flex items-center gap-2">
           <span className={clsx("h-2 w-2 rounded-full", dot)} />
-          {titulo}
+          <span
+            className="font-mono text-[10px] font-bold uppercase tracking-widest"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {titulo}
+          </span>
         </div>
-        <span className="rounded-md bg-white px-2 py-0.5 font-mono text-xs text-oliva-700">
+        <span
+          className="font-mono text-[11px] font-bold tabular-nums"
+          style={{ color: "var(--text)" }}
+        >
           {pedidos.length}
         </span>
       </div>
-      <div className="flex-1 space-y-2 p-2">
+      <div className="dense-scroll flex-1 space-y-1.5 overflow-y-auto p-1.5">
         {pedidos.length === 0 ? (
-          <div className="mt-4 text-center text-sm text-oliva-500/70">
-            Nada por aqui
+          <div
+            className="mt-6 text-center font-mono text-[10px] uppercase tracking-widest"
+            style={{ color: "var(--text-dim)" }}
+          >
+            —
           </div>
         ) : (
           pedidos.map((p) => (

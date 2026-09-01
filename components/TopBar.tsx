@@ -1,7 +1,6 @@
 "use client";
 
 import clsx from "clsx";
-import { useCurrentUserName } from "@/lib/user";
 
 type Props = {
   q: string;
@@ -19,15 +18,17 @@ type Props = {
 };
 
 export function TopBar(p: Props) {
-  const { nome } = useCurrentUserName();
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-oliva-100 bg-creme-50 p-3 shadow-sm">
-      <div className="relative min-w-[240px] flex-1">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-oliva-500">
-          🔎
+    <div className="card flex flex-wrap items-center gap-2 p-2.5">
+      <div className="relative min-w-[220px] flex-1">
+        <span
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm"
+          style={{ color: "var(--text-muted)" }}
+        >
+          ⌕
         </span>
         <input
-          className="input-base pl-9"
+          className="input-base pl-8"
           placeholder="Buscar por peça, frota ou solicitante…"
           value={p.q}
           onChange={(e) => p.onQ(e.target.value)}
@@ -48,12 +49,17 @@ export function TopBar(p: Props) {
       <Toggle
         pressed={p.soUrgentes}
         onClick={() => p.onSoUrgentes(!p.soUrgentes)}
-        tone="vermelho"
+        tone="danger"
       >
-        🔴 Urgentes
+        <span className="live-dot !h-1.5 !w-1.5" style={{ background: "var(--danger)", boxShadow: "0 0 0 2px var(--danger-soft)" }} />
+        Urgentes
       </Toggle>
-      <Toggle pressed={p.soAtraso} onClick={() => p.onSoAtraso(!p.soAtraso)} tone="amarelo">
-        ⏱ Em atraso
+      <Toggle
+        pressed={p.soAtraso}
+        onClick={() => p.onSoAtraso(!p.soAtraso)}
+        tone="warning"
+      >
+        ◷ Em atraso
       </Toggle>
       <Toggle
         pressed={p.ocultarFinalizados}
@@ -62,15 +68,16 @@ export function TopBar(p: Props) {
         Ocultar finalizados
       </Toggle>
       <div className="ml-auto flex items-center gap-2">
-        <a href="/api/export" className="btn-secondary" title="Exportar CSV">
-          ⬇ Exportar
-        </a>
-        <button
-          className="btn-primary"
-          onClick={p.onNovoPedido}
-          title={`Registrar como ${nome}`}
+        <a
+          href="/api/export"
+          className="btn-secondary !py-2 !text-xs"
+          title="Exportar CSV"
         >
-          + Novo pedido
+          ↓ CSV
+        </a>
+        <button className="btn-primary" onClick={p.onNovoPedido}>
+          <span className="text-base leading-none">＋</span>
+          Novo pedido
         </button>
       </div>
     </div>
@@ -85,21 +92,40 @@ function Toggle({
 }: {
   pressed: boolean;
   onClick: () => void;
-  tone?: "vermelho" | "amarelo";
+  tone?: "danger" | "warning";
   children: React.ReactNode;
 }) {
-  const base =
-    "inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium transition";
-  const ativo =
-    tone === "vermelho"
-      ? "border-red-500 bg-red-50 text-red-700"
-      : tone === "amarelo"
-      ? "border-amber-500 bg-amber-50 text-amber-800"
-      : "border-oliva-500 bg-oliva-50 text-oliva-900";
-  const inativo =
-    "border-oliva-100 bg-white text-oliva-800 hover:bg-oliva-50";
+  const style: React.CSSProperties = pressed
+    ? tone === "danger"
+      ? {
+          background: "var(--danger-soft)",
+          borderColor: "var(--danger-border)",
+          color: "var(--danger)",
+        }
+      : tone === "warning"
+      ? {
+          background: "var(--warning-soft)",
+          borderColor: "var(--warning-soft)",
+          color: "var(--warning)",
+        }
+      : {
+          background: "var(--brand-soft)",
+          borderColor: "var(--brand-border)",
+          color: "var(--brand)",
+        }
+    : {
+        background: "var(--surface)",
+        borderColor: "var(--border)",
+        color: "var(--text-muted)",
+      };
   return (
-    <button className={clsx(base, pressed ? ativo : inativo)} onClick={onClick}>
+    <button
+      className={clsx(
+        "inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold transition"
+      )}
+      style={style}
+      onClick={onClick}
+    >
       {children}
     </button>
   );

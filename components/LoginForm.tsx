@@ -36,27 +36,36 @@ export function LoginForm() {
   return (
     <form
       onSubmit={submit}
-      className="card-base w-full max-w-md rounded-xl p-6 shadow-2xl"
+      className="card w-full max-w-sm p-7"
+      style={{ boxShadow: "var(--shadow-md)" }}
     >
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-oliva-600 text-2xl font-black text-white">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-xl font-black text-black">
           G
         </div>
-        <div>
-          <div className="text-lg font-black" style={{ color: "var(--text)" }}>
+        <div className="leading-tight">
+          <div className="text-base font-bold tracking-tight">
             Fluxo de Peças
           </div>
           <div
-            className="text-[11px] font-mono uppercase tracking-widest"
+            className="mt-0.5 font-mono text-[10px] font-medium uppercase tracking-widest"
             style={{ color: "var(--text-muted)" }}
           >
             GRISOMAQ
           </div>
         </div>
       </div>
-      <p className="mb-4 text-sm" style={{ color: "var(--text-muted)" }}>
-        Entre com o usuário liberado pelo almoxarifado.
-      </p>
+
+      <div className="mb-5 flex items-center gap-2">
+        <span className="live-dot" />
+        <span
+          className="font-mono text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: "var(--brand)" }}
+        >
+          Sistema em operação
+        </span>
+      </div>
+
       <label className="label-form" htmlFor="nome">
         Usuário
       </label>
@@ -69,7 +78,7 @@ export function LoginForm() {
         onChange={(e) => setNome(e.target.value)}
         required
       />
-      <label className="label-form mt-3" htmlFor="senha">
+      <label className="label-form mt-4" htmlFor="senha">
         Senha
       </label>
       <input
@@ -82,19 +91,26 @@ export function LoginForm() {
         required
       />
       {erro && (
-        <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+        <div
+          className="mt-4 rounded-md border p-2.5 text-sm"
+          style={{
+            borderColor: "var(--danger-border)",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
+          }}
+        >
           {erro}
         </div>
       )}
       <button
         type="submit"
-        className="btn-primary mt-4 w-full justify-center"
+        className="btn-primary mt-5 w-full justify-center"
         disabled={entrando}
       >
-        {entrando ? "Entrando…" : "Entrar"}
+        {entrando ? "Entrando…" : "Entrar →"}
       </button>
       <p
-        className="mt-3 text-center text-[11px]"
+        className="mt-4 text-center text-[11px]"
         style={{ color: "var(--text-muted)" }}
       >
         Esqueceu a senha? Fale com o administrador do almoxarifado.

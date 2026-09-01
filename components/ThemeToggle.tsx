@@ -11,15 +11,13 @@ function aplicaTema(t: "claro" | "escuro") {
 }
 
 export function ThemeToggle() {
-  const [tema, setTema] = useState<"claro" | "escuro">("claro");
+  const [tema, setTema] = useState<"claro" | "escuro">("escuro");
 
   useEffect(() => {
-    const salvo = (localStorage.getItem(KEY) as "claro" | "escuro" | null) ?? null;
-    const prefereEscuro =
-      salvo === null &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const inicial: "claro" | "escuro" =
-      salvo ?? (prefereEscuro ? "escuro" : "claro");
+    const salvo =
+      (localStorage.getItem(KEY) as "claro" | "escuro" | null) ?? null;
+    // dark-first: default é escuro se não houver preferência
+    const inicial: "claro" | "escuro" = salvo ?? "escuro";
     setTema(inicial);
     aplicaTema(inicial);
   }, []);
@@ -33,18 +31,20 @@ export function ThemeToggle() {
 
   return (
     <button
-      className="btn-secondary"
+      className="btn-secondary !px-2.5 !py-2"
       onClick={alternar}
       title={`Tema ${tema}`}
       aria-label="Alternar tema"
     >
-      {tema === "claro" ? "🌙" : "☀️"}
+      <span className="text-base leading-none">
+        {tema === "claro" ? "🌙" : "☀️"}
+      </span>
     </button>
   );
 }
 
-// Script inline pra evitar flash antes do JS carregar
+// Script inline pra evitar flash antes do JS carregar. Dark-first.
 export function ThemeInitScript() {
-  const code = `try{var s=localStorage.getItem('grisomaq_tema');var d=s?s==='escuro':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}`;
+  const code = `try{var s=localStorage.getItem('grisomaq_tema');var d=s?s==='escuro':true;if(d)document.documentElement.classList.add('dark');}catch(e){document.documentElement.classList.add('dark');}`;
   return <script dangerouslySetInnerHTML={{ __html: code }} />;
 }

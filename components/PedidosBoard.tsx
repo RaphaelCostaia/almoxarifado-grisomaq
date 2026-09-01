@@ -14,12 +14,12 @@ import { useIsAdmin } from "./SessionProvider";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const COLUNAS: { key: Pedido["status"]; label: string; dot: string }[] = [
-  { key: "solicitada", label: "Solicitada", dot: "bg-blue-500" },
-  { key: "providenciando", label: "Providenciando", dot: "bg-amber-500" },
-  { key: "aguardando_buscar", label: "Aguardando buscar", dot: "bg-purple-500" },
-  { key: "aguardando_retirada", label: "Aguardando retirada", dot: "bg-teal-500" },
-  { key: "entregue", label: "Entregue", dot: "bg-oliva-500" },
-  { key: "cancelada", label: "Cancelado", dot: "bg-neutral-400" },
+  { key: "solicitada", label: "Solicitada", dot: "bg-info" },
+  { key: "providenciando", label: "Providenciando", dot: "bg-warning" },
+  { key: "aguardando_buscar", label: "Aguardando buscar", dot: "bg-purple-400" },
+  { key: "aguardando_retirada", label: "Aguardando retirada", dot: "bg-cyan-400" },
+  { key: "entregue", label: "Entregue", dot: "bg-brand" },
+  { key: "cancelada", label: "Cancelado", dot: "bg-neutral-500" },
 ];
 
 export function PedidosBoard() {
@@ -110,7 +110,7 @@ export function PedidosBoard() {
       />
       <KPIBar />
 
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      <div className="dense-scroll flex gap-2 overflow-x-auto pb-4">
         {COLUNAS.map((col) => (
           <KanbanColuna
             key={col.key}
@@ -139,7 +139,10 @@ export function PedidosBoard() {
       </div>
 
       {isLoading && !data && (
-        <div className="rounded-md border border-oliva-100 bg-creme-50 p-4 text-sm text-oliva-700">
+        <div
+          className="card p-4 text-sm"
+          style={{ color: "var(--text-muted)" }}
+        >
           Carregando pedidos…
         </div>
       )}

@@ -11,7 +11,12 @@ type Props = {
   onAbrir: () => void;
 };
 
-export function PedidoCard({ pedido, destaque, arrastavel = true, onAbrir }: Props) {
+export function PedidoCard({
+  pedido,
+  destaque,
+  arrastavel = true,
+  onAbrir,
+}: Props) {
   const urgente = pedido.prioridade === "urgente";
   const dias = diasDesde(pedido.atualizadoEm);
   const atrasado =
@@ -27,37 +32,77 @@ export function PedidoCard({ pedido, destaque, arrastavel = true, onAbrir }: Pro
       }}
       onClick={onAbrir}
       className={clsx(
-        "group w-full rounded-md border-l-4 bg-creme-50 p-2.5 text-left shadow-sm transition hover:shadow-md",
+        "group relative block w-full overflow-hidden rounded-md border p-2.5 text-left transition",
         arrastavel && "cursor-grab active:cursor-grabbing",
-        urgente
-          ? "border-l-red-600 bg-red-50 ring-1 ring-red-200"
-          : "border-l-oliva-500 ring-1 ring-oliva-100",
         destaque && "animate-pulseUrgente"
       )}
+      style={{
+        background: urgente ? "var(--danger-soft)" : "var(--surface)",
+        borderColor: urgente ? "var(--danger-border)" : "var(--border)",
+      }}
     >
-      {urgente && (
-        <div className="mb-1 flex items-center gap-1 rounded-md bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">
-          🔴 URGENTE
-        </div>
-      )}
-      <div className="chip mb-1">{pedido.frota}</div>
-      <div className="mb-1 line-clamp-2 text-sm font-semibold leading-snug text-oliva-900">
-        {pedido.quantidade > 1 && (
-          <span className="mr-1 font-mono text-oliva-700">
-            {pedido.quantidade} {pedido.unidade} ·
-          </span>
+      {/* Barra lateral esquerda */}
+      <span
+        className="absolute inset-y-0 left-0 w-[3px]"
+        style={{
+          background: urgente ? "var(--danger)" : "var(--brand)",
+        }}
+      />
+      <div className="pl-1.5">
+        {urgente && (
+          <div className="mb-1.5 flex items-center gap-1">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ background: "var(--danger)" }}
+            />
+            <span
+              className="font-mono text-[9px] font-black uppercase tracking-widest"
+              style={{ color: "var(--danger)" }}
+            >
+              URGENTE
+            </span>
+          </div>
         )}
-        {pedido.descricao}
-      </div>
-      <div className="flex items-center justify-between text-[11px] text-oliva-700">
-        <span>{pedido.solicitante}</span>
-        <span className="font-mono">{formatBR(pedido.criadoEm)}</span>
-      </div>
-      {atrasado && (
-        <div className="mt-1 inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-          ⏱ {dias}d parado
+        <div className="flex items-center gap-1.5">
+          <span className="chip">
+            {pedido.frota}
+          </span>
+          {pedido.quantidade > 1 && (
+            <span
+              className="font-mono text-[10px] font-bold tabular-nums"
+              style={{ color: "var(--text-muted)" }}
+            >
+              ×{pedido.quantidade} {pedido.unidade}
+            </span>
+          )}
         </div>
-      )}
+        <div
+          className="mt-1.5 line-clamp-2 text-[13px] font-semibold leading-snug"
+          style={{ color: "var(--text)" }}
+        >
+          {pedido.descricao}
+        </div>
+        <div
+          className="mt-1.5 flex items-center justify-between text-[10px]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <span className="truncate">{pedido.solicitante}</span>
+          <span className="font-mono tabular-nums">
+            {formatBR(pedido.criadoEm)}
+          </span>
+        </div>
+        {atrasado && (
+          <div
+            className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-widest"
+            style={{
+              background: "var(--warning-soft)",
+              color: "var(--warning)",
+            }}
+          >
+            ◷ {dias}d parado
+          </div>
+        )}
+      </div>
     </button>
   );
 }

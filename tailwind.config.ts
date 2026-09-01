@@ -6,25 +6,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Paleta GRISOMAQ (verde/creme observada nas telas atuais)
-        creme: {
-          50: "#f7f5ee",
-          100: "#eee9d6",
-          200: "#e2dcc4",
-          300: "#cec7ab",
+        brand: {
+          DEFAULT: "#22c55e",
+          strong: "#16a34a",
+          soft: "#22c55e18",
         },
-        oliva: {
-          50: "#f2f4ec",
-          100: "#e1e6d2",
-          500: "#6b8a3a",
-          600: "#54742c",
-          700: "#42591f",
-          800: "#334519",
-          900: "#243213",
+        danger: {
+          DEFAULT: "#ef4444",
+          soft: "#ef444418",
+        },
+        warning: {
+          DEFAULT: "#f59e0b",
+          soft: "#f59e0b18",
+        },
+        info: {
+          DEFAULT: "#3b82f6",
+          soft: "#3b82f618",
         },
       },
       fontFamily: {
         sans: [
+          "var(--font-sans)",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
@@ -32,7 +34,16 @@ export default {
           "Roboto",
           "sans-serif",
         ],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        mono: [
+          "var(--font-mono)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "monospace",
+        ],
+      },
+      letterSpacing: {
+        widest: "0.18em",
       },
       keyframes: {
         pulseUrgente: {
@@ -43,9 +54,14 @@ export default {
             boxShadow: "0 0 0 10px rgba(239, 68, 68, 0)",
           },
         },
+        liveDot: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.3" },
+        },
       },
       animation: {
         pulseUrgente: "pulseUrgente 1.4s ease-out 3",
+        liveDot: "liveDot 2s ease-in-out infinite",
       },
     },
   },

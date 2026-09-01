@@ -2,96 +2,220 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   PALETA — Industrial Moderno
+   Dark-first: prod fica escuro por padrão, claro é opcional.
+   ============================================================ */
+
 :root {
   color-scheme: light;
-  --bg: #eee9d6;
-  --surface: #f7f5ee;
-  --surface-2: #ffffff;
-  --border: #e1e6d2;
-  --text: #243213;
-  --text-muted: #42591f;
-  --brand: #54742c;
-  --brand-strong: #42591f;
-  --input-bg: #f7f5ee;
+  --bg: #f5f4ef;
+  --surface: #ffffff;
+  --surface-2: #fafaf6;
+  --surface-3: #eeece4;
+  --border: #e5e2d6;
+  --border-strong: #d4d0c0;
+  --text: #0f1509;
+  --text-muted: #6c7360;
+  --text-dim: #9aa08c;
+  --brand: #16a34a;
+  --brand-hover: #15803d;
+  --brand-soft: rgba(22, 163, 74, 0.10);
+  --brand-border: rgba(22, 163, 74, 0.25);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.09);
+  --danger-border: rgba(220, 38, 38, 0.35);
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.10);
+  --info: #2563eb;
+  --info-soft: rgba(37, 99, 235, 0.10);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-lg: 12px;
 }
 
 html.dark {
   color-scheme: dark;
-  --bg: #12160c;
-  --surface: #1c2213;
-  --surface-2: #232a19;
-  --border: #2f3822;
+  --bg: #0a0e0a;
+  --surface: #111a10;
+  --surface-2: #16211434;
+  --surface-3: #1a2419;
+  --border: #1f2a1c;
+  --border-strong: #2a3826;
   --text: #e8ecd8;
-  --text-muted: #b8c295;
-  --brand: #98b96b;
-  --brand-strong: #b8d488;
-  --input-bg: #1c2213;
+  --text-muted: #7a8874;
+  --text-dim: #4a5646;
+  --brand: #22c55e;
+  --brand-hover: #4ade80;
+  --brand-soft: rgba(34, 197, 94, 0.10);
+  --brand-border: rgba(34, 197, 94, 0.30);
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.10);
+  --danger-border: rgba(239, 68, 68, 0.40);
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.10);
+  --info: #3b82f6;
+  --info-soft: rgba(59, 130, 246, 0.10);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 html,
 body {
   background: var(--bg);
   color: var(--text);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
 }
 
+/* ============================================================
+   COMPONENTES
+   ============================================================ */
+
 .input-base {
-  @apply w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2;
-  background: var(--input-bg);
+  @apply w-full rounded-md border px-3 py-2 text-sm outline-none transition;
+  background: var(--surface);
   border-color: var(--border);
   color: var(--text);
 }
 .input-base::placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
+  color: var(--text-dim);
 }
 .input-base:focus {
   border-color: var(--brand);
-  --tw-ring-color: rgba(84, 116, 44, 0.3);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.input-base:disabled {
+  opacity: 0.6;
 }
 
 .btn-primary {
-  @apply inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm focus:outline-none focus:ring-2 disabled:opacity-50;
+  @apply inline-flex items-center gap-2 rounded-md px-3.5 py-2 text-sm font-semibold text-white transition disabled:opacity-50;
   background: var(--brand);
+  box-shadow: var(--shadow-sm);
 }
-.btn-primary:hover {
-  background: var(--brand-strong);
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-hover);
 }
-.btn-primary:focus {
-  --tw-ring-color: rgba(84, 116, 44, 0.4);
+.btn-primary:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2;
-  background: var(--surface-2);
+  @apply inline-flex items-center gap-2 rounded-md border px-3.5 py-2 text-sm font-medium transition;
+  background: var(--surface);
   border-color: var(--border);
   color: var(--text);
 }
 .btn-secondary:hover {
-  background: var(--surface);
+  border-color: var(--border-strong);
+  background: var(--surface-3);
 }
 
 .btn-ghost {
-  @apply inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium focus:outline-none;
-  color: var(--text);
+  @apply inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition;
+  color: var(--text-muted);
 }
 .btn-ghost:hover {
-  background: var(--surface);
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.btn-danger {
+  @apply inline-flex items-center gap-2 rounded-md border px-3.5 py-2 text-sm font-medium transition;
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+.btn-danger:hover {
+  background: var(--danger-soft);
 }
 
 .chip {
-  @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-xs;
-  background: var(--surface);
-  color: var(--text);
+  @apply inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider;
+  background: var(--surface-3);
+  color: var(--text-muted);
   border: 1px solid var(--border);
 }
+.chip-brand {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-color: var(--brand-border);
+}
+.chip-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+.chip-warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: transparent;
+}
+.chip-info {
+  background: var(--info-soft);
+  color: var(--info);
+  border-color: transparent;
+}
 
-.card-base {
-  @apply rounded-lg shadow-sm;
+.card {
+  @apply rounded-lg border;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border-color: var(--border);
+}
+
+.card-hover {
+  @apply cursor-pointer transition;
+}
+.card-hover:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
 }
 
 .label-form {
-  @apply mb-1 block text-xs font-semibold uppercase tracking-wide;
+  @apply mb-1 block text-[10px] font-semibold uppercase tracking-widest;
   color: var(--text-muted);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+}
+
+.tab-link {
+  @apply rounded-md px-3 py-1.5 text-sm font-medium transition;
+  color: var(--text-muted);
+}
+.tab-link:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+.tab-link[data-active="true"] {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.live-dot {
+  @apply inline-block h-2 w-2 rounded-full;
+  background: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+  animation: liveDot 2s ease-in-out infinite;
+}
+
+/* Scrollbars discretas */
+.dense-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.dense-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dense-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+.dense-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }

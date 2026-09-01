@@ -240,27 +240,30 @@ export function Modal({
   tituloBadge?: string;
   badgeTone?: "verde" | "vermelho" | "cinza" | "amarelo";
 }) {
-  const toneCls =
+  const toneStyle: React.CSSProperties =
     badgeTone === "vermelho"
-      ? "bg-red-600 text-white"
+      ? { background: "var(--danger)", color: "#fff" }
       : badgeTone === "cinza"
-      ? "bg-neutral-500 text-white"
+      ? { background: "var(--surface-3)", color: "var(--text-muted)" }
       : badgeTone === "amarelo"
-      ? "bg-amber-500 text-white"
-      : "bg-oliva-800 text-white";
+      ? { background: "var(--warning)", color: "#fff" }
+      : { background: "var(--brand)", color: "#000" };
   return (
     <div
-      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-oliva-900/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 backdrop-blur-sm"
+      style={{ background: "rgba(0,0,0,0.6)" }}
       onClick={onClose}
     >
       <div
-        className="mt-8 w-full max-w-xl rounded-xl border border-oliva-100 bg-creme-50 p-5 shadow-2xl"
+        className="card mt-8 w-full max-w-xl p-5"
+        style={{ boxShadow: "var(--shadow-md)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="mb-4 flex items-start justify-between gap-2">
           {tituloBadge ? (
             <span
-              className={`rounded-md px-2 py-1 text-[10px] font-black uppercase tracking-widest ${toneCls}`}
+              className="rounded-md px-2 py-1 font-mono text-[10px] font-black uppercase tracking-widest"
+              style={toneStyle}
             >
               {tituloBadge}
             </span>
@@ -268,7 +271,7 @@ export function Modal({
             <div />
           )}
           <button
-            className="rounded-md p-1 text-oliva-800 hover:bg-oliva-50"
+            className="btn-ghost"
             onClick={onClose}
             aria-label="Fechar"
           >
