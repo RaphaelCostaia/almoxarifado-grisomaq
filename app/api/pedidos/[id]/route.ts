@@ -66,6 +66,24 @@ export async function GET(
   return NextResponse.json({ pedido: pedido[0], eventos, peca });
 }
 
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const admin = await exigirAdminApi();
+  if (!admin.ok) return admin.res;
+  const id = Number(params.id);
+  if (!Number.isFinite(id)) {
+    return NextResponse.json({ error: "id_invalido" }, { status: 400 });
+  }
+  const [p] = await db.select().from(pedidos).where(eq(pedidos.id, id));
+  if (!p) {
+    return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
+  }
+  await db.delete(pedidos).where(eq(pedidos.id, id));
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }

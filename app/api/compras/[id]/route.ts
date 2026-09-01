@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
+import { compraEventos as _compraEventos } from "@/db/schema";
 import {
   compras,
   compraEventos,
@@ -52,6 +53,35 @@ export async function GET(
     pedidoVinculado = p ?? null;
   }
   return NextResponse.json({ compra: c, eventos, peca, pedidoVinculado });
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const admin = await exigirAdminApi();
+  if (!admin.ok) return admin.res;
+  const id = Number(params.id);
+  if (!Number.isFinite(id)) {
+    return NextResponse.json({ error: "id_invalido" }, { status: 400 });
+  }
+  const [c] = await db.select().from(compras).where(eq(compras.id, id));
+  if (!c) {
+    return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
+  }
+  // Só permite excluir rascunho — depois já mexeu em pedidos vinculados/estoque
+  if (c.status !== "rascunho") {
+    return NextResponse.json(
+      {
+        error: "nao_pode_excluir",
+        mensagem:
+          "Só é possível excluir uma solicitação em rascunho. Para outros status, use 'Cancelar' pra manter o histórico.",
+      },
+      { status: 409 }
+    );
+  }
+  await db.delete(compras).where(eq(compras.id, id));
+  return NextResponse.json({ ok: true });
 }
 
 export async function PATCH(

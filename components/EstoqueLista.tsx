@@ -16,6 +16,8 @@ export function EstoqueLista() {
   const [q, setQ] = useState("");
   const [nova, setNova] = useState(false);
   const [ajusteId, setAjusteId] = useState<number | null>(null);
+  const [excluirId, setExcluirId] = useState<number | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
   const { data, mutate } = useSWR<{
     pecas: Peca[];
     resumo: { total: number; repor: number; criticos: number };
@@ -176,6 +178,14 @@ export function EstoqueLista() {
                         >
                           Comprar
                         </Link>
+                        <button
+                          className="btn-ghost"
+                          onClick={() => setExcluirId(p.id)}
+                          title="Excluir peça"
+                          style={{ color: "var(--danger)" }}
+                        >
+                          🗑
+                        </button>
                       </div>
                     ) : (
                       <span
@@ -222,6 +232,61 @@ export function EstoqueLista() {
             mutate();
           }}
         />
+      )}
+      {excluirId != null && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setExcluirId(null)}
+        >
+          <div
+            className="card w-full max-w-md p-5"
+            style={{ boxShadow: "var(--shadow-md)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold tracking-tight">
+              Excluir esta peça?
+            </h3>
+            <p
+              className="mt-2 text-sm"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {pecas.find((p) => p.id === excluirId)?.nome} —{" "}
+              {pecas.find((p) => p.id === excluirId)?.codigo ?? "sem código"}.
+              Isso é PERMANENTE. Só é permitido se não houver pedidos em
+              andamento.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                className="btn-secondary"
+                onClick={() => setExcluirId(null)}
+                type="button"
+              >
+                Voltar
+              </button>
+              <button
+                className="btn-danger"
+                disabled={excluindo}
+                onClick={async () => {
+                  setExcluindo(true);
+                  const res = await fetch(`/api/estoque/${excluirId}`, {
+                    method: "DELETE",
+                  });
+                  setExcluindo(false);
+                  if (!res.ok) {
+                    const j = await res.json().catch(() => ({}));
+                    alert(j.mensagem ?? "Falha ao excluir.");
+                    return;
+                  }
+                  setExcluirId(null);
+                  mutate();
+                }}
+              >
+                {excluindo ? "Excluindo…" : "Sim, excluir"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

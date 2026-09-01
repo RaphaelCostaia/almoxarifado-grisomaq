@@ -72,7 +72,7 @@ export function PedidoDetalheDialog({
   }>(`/api/pedidos/${id}`, fetcher, { refreshInterval: 3000 });
   const [comentario, setComentario] = useState("");
   const [salvando, setSalvando] = useState(false);
-  const [confirmando, setConfirmando] = useState<null | "cancelar" | "reabrir">(
+  const [confirmando, setConfirmando] = useState<null | "cancelar" | "reabrir" | "excluir">(
     null
   );
 
@@ -344,6 +344,15 @@ export function PedidoDetalheDialog({
               ↺ Reabrir pedido
             </button>
           )}
+          <button
+            className="btn-ghost !text-[11px]"
+            style={{ color: "var(--text-dim)" }}
+            disabled={salvando}
+            onClick={() => setConfirmando("excluir")}
+            title="Apaga definitivamente — use quando criou por engano"
+          >
+            🗑 Excluir permanentemente
+          </button>
         </div>
       )}
       {!isAdmin && !finalizado && (
@@ -413,7 +422,7 @@ export function PedidoDetalheDialog({
         </div>
       </div>
 
-      {confirmando && (
+      {confirmando && confirmando !== "excluir" && (
         <ConfirmDialog
           titulo={
             confirmando === "cancelar"
@@ -429,10 +438,33 @@ export function PedidoDetalheDialog({
           tone={confirmando === "cancelar" ? "danger" : "brand"}
           onClose={() => setConfirmando(null)}
           onConfirm={async () => {
+            const acao = confirmando;
             setConfirmando(null);
             await patch({
-              status: confirmando === "cancelar" ? "cancelada" : "solicitada",
+              status: acao === "cancelar" ? "cancelada" : "solicitada",
             });
+          }}
+        />
+      )}
+      {confirmando === "excluir" && (
+        <ConfirmDialog
+          titulo="Excluir este pedido PERMANENTEMENTE?"
+          descricao="Isso apaga o pedido e o histórico. NÃO recuperável. Use apenas quando criou por engano — pra registrar que não vai ser atendido, prefira Cancelar."
+          confirmar="Sim, excluir definitivo"
+          tone="danger"
+          onClose={() => setConfirmando(null)}
+          onConfirm={async () => {
+            setConfirmando(null);
+            setSalvando(true);
+            const res = await fetch(`/api/pedidos/${id}`, { method: "DELETE" });
+            setSalvando(false);
+            if (!res.ok) {
+              const j = await res.json().catch(() => ({}));
+              alert(j.mensagem ?? "Falha ao excluir.");
+              return;
+            }
+            onChanged();
+            onClose();
           }}
         />
       )}

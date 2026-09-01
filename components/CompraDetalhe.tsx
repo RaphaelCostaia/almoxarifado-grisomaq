@@ -3,6 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
   STATUS_COMPRA_LABELS,
@@ -21,6 +22,7 @@ import { FileInput } from "./FileInput";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function CompraDetalhe({ id }: { id: number }) {
+  const router = useRouter();
   const { nome } = useCurrentUserName();
   const isAdmin = useIsAdmin();
   const { data, mutate } = useSWR<{
@@ -34,6 +36,7 @@ export function CompraDetalhe({ id }: { id: number }) {
   const [nfFile, setNfFile] = useState<File | null>(null);
   const [confirmarReceber, setConfirmarReceber] = useState(false);
   const [confirmCancelar, setConfirmCancelar] = useState(false);
+  const [confirmExcluir, setConfirmExcluir] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
   if (!data) {
@@ -253,7 +256,17 @@ export function CompraDetalhe({ id }: { id: number }) {
             📦 Marcar como recebida
           </button>
         )}
-        {["rascunho", "aprovada", "comprada"].includes(c.status) && (
+        {c.status === "rascunho" && (
+          <button
+            className="btn-danger ml-auto"
+            disabled={salvando}
+            onClick={() => setConfirmExcluir(true)}
+            title="Apaga definitivamente — use quando criou por engano"
+          >
+            🗑 Excluir rascunho
+          </button>
+        )}
+        {["aprovada", "comprada"].includes(c.status) && (
           <button
             className="btn-danger ml-auto"
             disabled={salvando}
@@ -288,13 +301,37 @@ export function CompraDetalhe({ id }: { id: number }) {
       {confirmCancelar && (
         <ConfirmDialog
           titulo="Cancelar esta solicitação?"
-          descricao="A compra ficará com status Cancelada. Você pode criar uma nova depois."
+          descricao="A compra ficará com status Cancelada mas continua no histórico."
           confirmar="Sim, cancelar"
           tone="danger"
           onClose={() => setConfirmCancelar(false)}
           onConfirm={async () => {
             setConfirmCancelar(false);
             await avancar("cancelada");
+          }}
+        />
+      )}
+      {confirmExcluir && (
+        <ConfirmDialog
+          titulo="Excluir esta solicitação de compra?"
+          descricao="Isso apaga o rascunho PERMANENTEMENTE — não fica no histórico. Use apenas quando você criou por engano. Se já foi aprovada/comprada, use 'Cancelar' pra manter a rastreabilidade."
+          confirmar="Sim, excluir definitivo"
+          tone="danger"
+          onClose={() => setConfirmExcluir(false)}
+          onConfirm={async () => {
+            setSalvando(true);
+            const res = await fetch(`/api/compras/${id}`, {
+              method: "DELETE",
+            });
+            setSalvando(false);
+            if (!res.ok) {
+              const j = await res.json().catch(() => ({}));
+              alert(j.mensagem ?? "Falha ao excluir.");
+              setConfirmExcluir(false);
+              return;
+            }
+            router.push("/compras");
+            router.refresh();
           }}
         />
       )}

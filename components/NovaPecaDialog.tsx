@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Modal } from "./NovoPedidoDialog";
+import clsx from "clsx";
 
 type Props = {
   onClose: () => void;
@@ -18,26 +19,36 @@ export function NovaPecaDialog({ onClose, onCreated }: Props) {
   const [localizacao, setLocalizacao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [camposComErro, setCamposComErro] = useState<string[]>([]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
+    setCamposComErro([]);
     setSalvando(true);
     try {
       const res = await fetch("/api/estoque", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nome,
-          codigo: codigo || null,
+          nome: nome.trim(),
+          codigo: codigo.trim() || null,
           unidade,
           saldo,
           minimo,
           maximo,
-          localizacao: localizacao || null,
+          localizacao: localizacao.trim() || null,
         }),
       });
-      if (!res.ok) throw new Error("Falha ao cadastrar peça");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        if (res.status === 409 && j.error === "peca_duplicada") {
+          setErro(j.mensagem ?? "Peça duplicada.");
+          setCamposComErro(j.campos ?? []);
+          return;
+        }
+        throw new Error(j.mensagem ?? j.error ?? "Falha ao cadastrar peça");
+      }
       onCreated();
     } catch (e: any) {
       setErro(e.message);
@@ -46,6 +57,9 @@ export function NovaPecaDialog({ onClose, onCreated }: Props) {
     }
   }
 
+  const inputCls = (campo: string) =>
+    clsx("input-base", camposComErro.includes(campo) && "!border-danger");
+
   return (
     <Modal onClose={onClose} tituloBadge="Cadastrar peça">
       <form onSubmit={submit} className="space-y-3">
@@ -53,21 +67,53 @@ export function NovaPecaDialog({ onClose, onCreated }: Props) {
           <label className="label-form">Nome da peça</label>
           <input
             required
-            className="input-base"
+            className={inputCls("nome")}
             value={nome}
-            onChange={(e) => setNome(e.target.value)}
+            onChange={(e) => {
+              setNome(e.target.value);
+              if (camposComErro.includes("nome")) setCamposComErro([]);
+            }}
             placeholder="Ex: Abraçadeira de mangueira 3/4"
+            style={
+              camposComErro.includes("nome")
+                ? { borderColor: "var(--danger)" }
+                : undefined
+            }
           />
+          {camposComErro.includes("nome") && (
+            <div
+              className="mt-1 text-[11px] font-semibold"
+              style={{ color: "var(--danger)" }}
+            >
+              Nome já cadastrado. Tente uma variação (ex.: 3/4 galv, 3/4 aço).
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label-form">Código (opcional)</label>
             <input
-              className="input-base"
+              className={inputCls("codigo")}
               value={codigo}
-              onChange={(e) => setCodigo(e.target.value)}
+              onChange={(e) => {
+                setCodigo(e.target.value);
+                if (camposComErro.includes("codigo")) setCamposComErro([]);
+              }}
               placeholder="Ex: MG-ABR-34"
+              style={
+                camposComErro.includes("codigo")
+                  ? { borderColor: "var(--danger)" }
+                  : undefined
+              }
             />
+            {camposComErro.includes("codigo") && (
+              <div
+                className="mt-1 text-[11px] font-semibold"
+                style={{ color: "var(--danger)" }}
+              >
+                Código já usado em outra peça.
+              </div>
+            )}
           </div>
           <div>
             <label className="label-form">Unidade</label>
@@ -120,9 +166,29 @@ export function NovaPecaDialog({ onClose, onCreated }: Props) {
             placeholder="Ex: Prateleira A2"
           />
         </div>
-        {erro && (
-          <div className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+        {erro && camposComErro.length === 0 && (
+          <div
+            className="rounded-md border p-2 text-sm"
+            style={{
+              borderColor: "var(--danger-border)",
+              background: "var(--danger-soft)",
+              color: "var(--danger)",
+            }}
+          >
             {erro}
+          </div>
+        )}
+        {erro && camposComErro.length > 0 && (
+          <div
+            className="rounded-md border p-2 text-sm"
+            style={{
+              borderColor: "var(--danger-border)",
+              background: "var(--danger-soft)",
+              color: "var(--danger)",
+            }}
+          >
+            ⚠ {erro} O sistema não permite peças duplicadas — cada peça é
+            controlada individualmente.
           </div>
         )}
         <div className="flex justify-end gap-2">
