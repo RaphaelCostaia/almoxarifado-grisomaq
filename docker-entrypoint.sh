@@ -1,19 +1,20 @@
 #!/bin/sh
 set -e
 
-# 1. Limpa duplicatas antes de aplicar as novas constraints (senão push falha)
+# 1. Limpa duplicatas antes de aplicar novas constraints
 echo "[grisomaq] Limpando duplicatas legadas (se houver)…"
 if ! npx --no-install tsx db/cleanup-duplicates.ts; then
-  echo "[grisomaq] cleanup falhou (talvez tabelas ainda não existam), continuando."
+  echo "[grisomaq] cleanup falhou (talvez tabelas não existam ainda), continuando."
 fi
 
-# 2. Aplica schema atual (unique constraints, novas colunas)
+# 2. Aplica schema. Pipe 'yes ""' pra responder Enter automático nos prompts
+#    do drizzle-kit push (a opção default é "adicionar sem truncar", que é a correta).
 echo "[grisomaq] Aplicando schema (drizzle push)…"
-if ! npx --no-install drizzle-kit push --force; then
+if ! yes "" 2>/dev/null | npx --no-install drizzle-kit push --force; then
   echo "[grisomaq] drizzle-kit push falhou. Continuando mesmo assim."
 fi
 
-# 3. Seed idempotente. Roda sempre — não duplica nada.
+# 3. Seed idempotente
 echo "[grisomaq] Rodando seed idempotente…"
 if ! npx --no-install tsx db/seed.ts; then
   echo "[grisomaq] seed falhou."
