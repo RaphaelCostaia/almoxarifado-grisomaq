@@ -48,6 +48,32 @@ async function main() {
     CREATE INDEX IF NOT EXISTS pedidos_local_idx ON pedidos (local);
   `);
 
+  // Aumenta motivo para 200 chars (era 64) — permite motivo "Outro" mais longo
+  console.log("[constraints] Ajustando tamanho de pedidos.motivo pra 200…");
+  await db.execute(sql`
+    ALTER TABLE pedidos
+    ALTER COLUMN motivo TYPE varchar(200);
+  `);
+
+  // Novos campos: código da peça, fabricante, modelo e ano do veículo
+  console.log("[constraints] Adicionando novos campos em pedidos (codigo_peca, fabricante, modelo_veiculo, ano_veiculo)…");
+  await db.execute(sql`
+    ALTER TABLE pedidos
+    ADD COLUMN IF NOT EXISTS codigo_peca varchar(64);
+  `);
+  await db.execute(sql`
+    ALTER TABLE pedidos
+    ADD COLUMN IF NOT EXISTS fabricante varchar(128);
+  `);
+  await db.execute(sql`
+    ALTER TABLE pedidos
+    ADD COLUMN IF NOT EXISTS modelo_veiculo varchar(128);
+  `);
+  await db.execute(sql`
+    ALTER TABLE pedidos
+    ADD COLUMN IF NOT EXISTS ano_veiculo varchar(16);
+  `);
+
   // Novo: tabela notificacoes
   console.log("[constraints] Criando tabela notificacoes (se faltar)…");
   await db.execute(sql`

@@ -11,13 +11,17 @@ export const dynamic = "force-dynamic";
 const NovoPedidoSchema = z.object({
   frota: z.string().min(1).max(64),
   local: z.string().max(64).optional().nullable(),
+  modeloVeiculo: z.string().max(128).optional().nullable(),
+  anoVeiculo: z.string().max(16).optional().nullable(),
   descricao: z.string().min(1),
+  codigoPeca: z.string().max(64).optional().nullable(),
+  fabricante: z.string().max(128).optional().nullable(),
   quantidade: z.coerce.number().int().min(1),
   unidade: z.string().min(1).max(16).default("un"),
-  motivo: z.string().min(1).max(64),
+  motivo: z.string().min(1).max(200),
   prioridade: z.enum(["normal", "urgente"]).default("normal"),
   observacoes: z.string().optional().nullable(),
-  fotoUrl: z.string().url().optional().nullable(),
+  fotoUrl: z.string().min(1).max(500).optional().nullable(),
   pecaId: z.coerce.number().int().optional().nullable(),
 });
 
@@ -111,7 +115,11 @@ export async function POST(req: NextRequest) {
     .values({
       frota: dados.frota,
       local: dados.local ?? null,
+      modeloVeiculo: dados.modeloVeiculo?.trim() || null,
+      anoVeiculo: dados.anoVeiculo?.trim() || null,
       descricao: dados.descricao,
+      codigoPeca: dados.codigoPeca?.trim() || null,
+      fabricante: dados.fabricante?.trim() || null,
       quantidade: dados.quantidade,
       unidade: dados.unidade,
       motivo: dados.motivo,

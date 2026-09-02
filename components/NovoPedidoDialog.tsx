@@ -12,7 +12,11 @@ import clsx from "clsx";
 export type PedidoPrefill = {
   frota?: string;
   local?: string;
+  modeloVeiculo?: string | null;
+  anoVeiculo?: string | null;
   descricao?: string;
+  codigoPeca?: string | null;
+  fabricante?: string | null;
   quantidade?: number;
   unidade?: string;
   motivo?: string;
@@ -45,7 +49,13 @@ export function NovoPedidoDialog({
   const { nome } = useSession();
   const [frota, setFrota] = useState(prefill?.frota ?? "");
   const [local, setLocal] = useState(prefill?.local ?? "");
+  const [modeloVeiculo, setModeloVeiculo] = useState(
+    prefill?.modeloVeiculo ?? ""
+  );
+  const [anoVeiculo, setAnoVeiculo] = useState(prefill?.anoVeiculo ?? "");
   const [descricao, setDescricao] = useState(prefill?.descricao ?? "");
+  const [codigoPeca, setCodigoPeca] = useState(prefill?.codigoPeca ?? "");
+  const [fabricante, setFabricante] = useState(prefill?.fabricante ?? "");
   const [peca, setPeca] = useState<Peca | null>(null);
   const [qtd, setQtd] = useState<number>(prefill?.quantidade ?? 1);
   const [unidade, setUnidade] = useState(prefill?.unidade ?? "un");
@@ -83,6 +93,15 @@ export function NovoPedidoDialog({
         if (up.ok) {
           const j = await up.json();
           fotoUrl = j.url;
+        } else {
+          const j = await up.json().catch(() => ({}));
+          throw new Error(
+            j.error === "arquivo_muito_grande"
+              ? `Foto muito grande (máx ${j.limiteMb ?? 8}MB). Tira uma foto menor ou envia sem foto.`
+              : j.error === "blob_nao_configurado"
+              ? "Upload de foto não configurado no servidor."
+              : "Falha ao enviar a foto. Tenta sem foto ou usa arquivo menor."
+          );
         }
       }
       const res = await fetch("/api/pedidos", {
@@ -91,12 +110,16 @@ export function NovoPedidoDialog({
         body: JSON.stringify({
           frota,
           local: local.trim() || null,
+          modeloVeiculo: modeloVeiculo.trim() || null,
+          anoVeiculo: anoVeiculo.trim() || null,
+          codigoPeca: (codigoPeca || peca?.codigo || "").trim() || null,
+          fabricante: fabricante.trim() || null,
           descricao: peca ? peca.nome : descricao,
           quantidade: qtd,
           unidade: peca ? peca.unidade : unidade,
           motivo:
             motivo === "Outro" && motivoOutro.trim()
-              ? motivoOutro.trim().slice(0, 60)
+              ? motivoOutro.trim().slice(0, 150)
               : motivo,
           prioridade,
           observacoes: observacoes || null,
@@ -106,7 +129,13 @@ export function NovoPedidoDialog({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? "Falha ao registrar pedido");
+        if (j.error === "dados_invalidos" && j.detalhes?.fieldErrors) {
+          const campos = Object.keys(j.detalhes.fieldErrors);
+          throw new Error(
+            "Preenchimento inválido nos campos: " + campos.join(", ")
+          );
+        }
+        throw new Error(j.mensagem ?? j.error ?? "Falha ao registrar pedido");
       }
       onCreated();
     } catch (err: any) {
@@ -149,12 +178,37 @@ export function NovoPedidoDialog({
             </datalist>
           </div>
         </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="label-form">Modelo do veículo (opcional)</label>
+            <input
+              className="input-base"
+              placeholder="Ex: Volvo FH 540, John Deere 6135J"
+              value={modeloVeiculo}
+              onChange={(e) => setModeloVeiculo(e.target.value)}
+              maxLength={128}
+            />
+          </div>
+          <div>
+            <label className="label-form">Ano</label>
+            <input
+              className="input-base"
+              placeholder="Ex: 2022"
+              value={anoVeiculo}
+              onChange={(e) => setAnoVeiculo(e.target.value)}
+              maxLength={16}
+            />
+          </div>
+        </div>
         <div>
           <label className="label-form">Peça / Descrição</label>
           <PecaAutocomplete
             valor={descricao}
             onValor={setDescricao}
-            onPeca={setPeca}
+            onPeca={(p) => {
+              setPeca(p);
+              if (p?.codigo && !codigoPeca) setCodigoPeca(p.codigo);
+            }}
           />
           {peca && (
             <div className="mt-1 text-xs text-oliva-700">
@@ -175,6 +229,28 @@ export function NovoPedidoDialog({
               . Ao ser entregue o saldo baixa automaticamente.
             </div>
           )}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label-form">Código da peça (opcional)</label>
+            <input
+              className="input-base font-mono"
+              placeholder="Ex: 21715165, MB-A0001234"
+              value={codigoPeca}
+              onChange={(e) => setCodigoPeca(e.target.value)}
+              maxLength={64}
+            />
+          </div>
+          <div>
+            <label className="label-form">Fabricante (opcional)</label>
+            <input
+              className="input-base"
+              placeholder="Ex: Bosch, Volvo, John Deere"
+              value={fabricante}
+              onChange={(e) => setFabricante(e.target.value)}
+              maxLength={128}
+            />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -215,14 +291,27 @@ export function NovoPedidoDialog({
             ))}
           </select>
           {motivo === "Outro" && (
-            <input
-              className="input-base mt-2"
-              placeholder="Descreva o motivo…"
-              value={motivoOutro}
-              onChange={(e) => setMotivoOutro(e.target.value)}
-              required
-              maxLength={60}
-            />
+            <>
+              <input
+                className="input-base mt-2"
+                placeholder="Descreva o motivo…"
+                value={motivoOutro}
+                onChange={(e) => setMotivoOutro(e.target.value)}
+                required
+                maxLength={150}
+              />
+              <div
+                className="mt-1 text-right font-mono text-[10px]"
+                style={{
+                  color:
+                    motivoOutro.length > 130
+                      ? "var(--warning)"
+                      : "var(--text-muted)",
+                }}
+              >
+                {motivoOutro.length}/150
+              </div>
+            </>
           )}
         </div>
         <div>

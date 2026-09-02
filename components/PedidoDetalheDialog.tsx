@@ -25,6 +25,10 @@ type Props = {
   onDuplicar?: (dados: {
     frota: string;
     local?: string;
+    modeloVeiculo?: string;
+    anoVeiculo?: string;
+    codigoPeca?: string;
+    fabricante?: string;
     descricao: string;
     quantidade: number;
     unidade: string;
@@ -166,6 +170,10 @@ export function PedidoDetalheDialog({
       <div className="grid grid-cols-2 gap-2">
         <Field label="Frota / Equipamento" v={pedido.frota} />
         <Field label="Local de trabalho" v={pedido.local ?? "—"} />
+        <Field label="Modelo do veículo" v={pedido.modeloVeiculo ?? "—"} />
+        <Field label="Ano" v={pedido.anoVeiculo ?? "—"} />
+        <Field label="Código da peça" v={pedido.codigoPeca ?? "—"} mono />
+        <Field label="Fabricante" v={pedido.fabricante ?? "—"} />
         <Field label="Solicitante" v={pedido.solicitante} />
         <Field label="Motivo" v={pedido.motivo} />
         <Field label="Solicitado em" v={formatBR(pedido.criadoEm)} />
@@ -285,6 +293,10 @@ export function PedidoDetalheDialog({
               onDuplicar({
                 frota: pedido.frota,
                 local: pedido.local ?? undefined,
+                modeloVeiculo: pedido.modeloVeiculo ?? undefined,
+                anoVeiculo: pedido.anoVeiculo ?? undefined,
+                codigoPeca: pedido.codigoPeca ?? undefined,
+                fabricante: pedido.fabricante ?? undefined,
                 descricao: pedido.descricao,
                 quantidade: pedido.quantidade,
                 unidade: pedido.unidade,
@@ -472,7 +484,15 @@ export function PedidoDetalheDialog({
   );
 }
 
-function Field({ label, v }: { label: string; v: string }) {
+function Field({
+  label,
+  v,
+  mono,
+}: {
+  label: string;
+  v: string;
+  mono?: boolean;
+}) {
   return (
     <div
       className="rounded-md border p-2.5"
@@ -488,7 +508,7 @@ function Field({ label, v }: { label: string; v: string }) {
         {label}
       </div>
       <div
-        className="mt-0.5 text-sm font-medium"
+        className={`mt-0.5 text-sm font-medium ${mono ? "font-mono" : ""}`}
         style={{ color: "var(--text)" }}
       >
         {v}

@@ -83,6 +83,16 @@ export function PedidoCard({
         >
           {pedido.descricao}
         </div>
+        {(pedido.codigoPeca || pedido.fabricante) && (
+          <div
+            className="mt-0.5 truncate font-mono text-[10px]"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {pedido.codigoPeca}
+            {pedido.codigoPeca && pedido.fabricante && " · "}
+            {pedido.fabricante}
+          </div>
+        )}
         <div
           className="mt-1.5 flex items-center justify-between text-[10px]"
           style={{ color: "var(--text-muted)" }}

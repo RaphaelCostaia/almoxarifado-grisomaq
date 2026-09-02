@@ -26,7 +26,7 @@ const PatchSchema = z.object({
   valorUnit: z.coerce.number().optional().nullable(),
   prazo: z.string().optional().nullable(),
   nfNumero: z.string().max(64).optional().nullable(),
-  nfUrl: z.string().url().optional().nullable(),
+  nfUrl: z.string().min(1).max(500).optional().nullable(),
   observacoes: z.string().optional().nullable(),
 });
 
