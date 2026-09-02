@@ -14,6 +14,7 @@ const TABS: Tab[] = [
   { href: "/estoque", label: "Estoque" },
   { href: "/compras", label: "Compras" },
   { href: "/dashboard", label: "Dashboard", adminOnly: true },
+  { href: "/admin/frotas", label: "Frotas", adminOnly: true },
   { href: "/admin/usuarios", label: "Usuários", adminOnly: true },
 ];
 
