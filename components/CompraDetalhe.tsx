@@ -235,8 +235,16 @@ export function CompraDetalhe({ id }: { id: number }) {
               value={c.valorUnit ? `R$ ${c.valorUnit}` : "—"}
             />
             <Card
-              label={c.status === "recebida" ? "Valor pago" : "Valor previsto"}
-              value={c.valorTotal ? `R$ ${c.valorTotal}` : "—"}
+              label={c.status === "recebida" ? "Valor pago" : "Valor total"}
+              value={
+                c.status === "recebida" && c.valorTotal
+                  ? `R$ ${c.valorTotal}`
+                  : c.status === "recebida"
+                  ? "—"
+                  : c.valorTotal
+                  ? `R$ ${c.valorTotal} · ainda não pago`
+                  : "—"
+              }
             />
             <Card
               label="Condição de pagamento"

@@ -67,11 +67,7 @@ export function Dashboard() {
         <Kpi
           n={data.aguardandoChegar?.c ?? 0}
           label="Aguardando chegar"
-          hint={
-            (data.aguardandoChegar?.total ?? 0) > 0
-              ? `R$ ${data.aguardandoChegar.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} previstos`
-              : "compras já compradas"
-          }
+          hint="compras já feitas ao fornecedor"
           tone={(data.aguardandoChegar?.c ?? 0) > 0 ? "warning" : undefined}
         />
         <Kpi
@@ -172,10 +168,7 @@ export function Dashboard() {
           </div>
         </Card>
 
-        <Card
-          titulo="Compras por status"
-          subtitulo="valor total = só pago quando recebida"
-        >
+        <Card titulo="Compras por status" subtitulo="tempo real">
           <div className="space-y-2">
             {(!data.comprasPorStatus || data.comprasPorStatus.length === 0) && (
               <div

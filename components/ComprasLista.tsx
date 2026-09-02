@@ -130,10 +130,11 @@ export function ComprasLista() {
               </div>
             </div>
             <div className="text-right">
-              {isAdmin && c.valorTotal && (
+              {isAdmin && c.status === "recebida" && c.valorTotal && (
                 <div
                   className="font-mono text-sm font-bold tabular-nums"
-                  style={{ color: "var(--text)" }}
+                  style={{ color: "var(--brand)" }}
+                  title="Valor efetivamente pago"
                 >
                   R$ {c.valorTotal}
                 </div>
