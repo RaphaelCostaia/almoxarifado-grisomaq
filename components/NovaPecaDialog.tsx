@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Modal } from "./NovoPedidoDialog";
+import { useIsAdmin } from "./SessionProvider";
 import clsx from "clsx";
 
 type Props = {
@@ -10,6 +11,34 @@ type Props = {
 };
 
 export function NovaPecaDialog({ onClose, onCreated }: Props) {
+  const isAdmin = useIsAdmin();
+  if (!isAdmin) {
+    // Defesa em profundidade — o botão que abre este dialog já é escondido
+    // pra funcionário, e o POST /api/estoque também exige admin. Este bloco
+    // só age se algo tentar renderizar o dialog fora dos caminhos previstos.
+    return (
+      <Modal onClose={onClose} tituloBadge="Sem permissão">
+        <div className="space-y-2">
+          <p className="text-sm">
+            Só o administrador do almoxarifado cadastra peças no estoque.
+          </p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            Se você precisa de uma peça, abra um pedido em <b>Pedidos</b> —
+            o admin decide se compra ou tira do estoque.
+          </p>
+          <div className="flex justify-end pt-2">
+            <button className="btn-primary" onClick={onClose} type="button">
+              Ok, entendi
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+  return <NovaPecaForm onClose={onClose} onCreated={onCreated} />;
+}
+
+function NovaPecaForm({ onClose, onCreated }: Props) {
   const [nome, setNome] = useState("");
   const [codigo, setCodigo] = useState("");
   const [unidade, setUnidade] = useState("un");

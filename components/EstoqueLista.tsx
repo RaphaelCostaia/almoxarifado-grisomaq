@@ -69,7 +69,7 @@ export function EstoqueLista() {
             </option>
           ))}
         </select>
-        {isAdmin && (
+        {isAdmin ? (
           <div className="ml-auto flex items-center gap-2">
             <Link href="/compras/nova" className="btn-secondary !text-xs">
               Solicitar compra
@@ -78,6 +78,25 @@ export function EstoqueLista() {
               <span className="text-base leading-none">＋</span>
               Cadastrar peça
             </button>
+          </div>
+        ) : (
+          <div
+            className="ml-auto rounded-md border px-3 py-1.5 text-[11px]"
+            style={{
+              borderColor: "var(--border)",
+              background: "var(--surface-3)",
+              color: "var(--text-muted)",
+            }}
+          >
+            Modo consulta. Pra pedir peça, abra em{" "}
+            <Link
+              href="/pedidos"
+              className="font-semibold underline"
+              style={{ color: "var(--brand)" }}
+            >
+              Pedidos
+            </Link>
+            .
           </div>
         )}
       </div>
