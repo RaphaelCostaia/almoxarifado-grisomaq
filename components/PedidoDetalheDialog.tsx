@@ -14,6 +14,7 @@ import {
   type Compra,
 } from "@/db/schema";
 import { formatBR } from "@/lib/date";
+import { formatSaldo, toNum as toNumSaldo } from "@/lib/formatSaldo";
 import { useCurrentUserName } from "@/lib/user";
 import { useIsAdmin } from "./SessionProvider";
 import { Modal } from "./NovoPedidoDialog";
@@ -222,17 +223,19 @@ export function PedidoDetalheDialog({
             <span
               className={clsx(
                 "chip",
-                peca.saldo === 0
+                toNumSaldo(peca.saldo) === 0
                   ? "chip-danger"
-                  : peca.saldo <= peca.minimo
+                  : toNumSaldo(peca.saldo) <= toNumSaldo(peca.minimo)
                   ? "chip-warning"
                   : "chip-brand"
               )}
             >
-              Saldo {peca.saldo} {peca.unidade}
+              Saldo {formatSaldo(peca.saldo, peca.unidade)} {peca.unidade}
             </span>
           </div>
-          {isAdmin && (peca.saldo === 0 || peca.saldo < pedido.quantidade) && (
+          {isAdmin &&
+            (toNumSaldo(peca.saldo) === 0 ||
+              toNumSaldo(peca.saldo) < pedido.quantidade) && (
             <div
               className="mt-2 rounded-md p-2 text-xs"
               style={{

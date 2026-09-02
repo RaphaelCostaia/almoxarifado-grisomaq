@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const Schema = z.object({
   tipo: z.enum(["entrada", "saida", "ajuste"]),
-  quantidade: z.coerce.number().int().positive(),
+  quantidade: z.coerce.number().positive(),
   motivo: z.string().max(128).optional(),
 });
 
@@ -28,6 +28,11 @@ export async function POST(
   const { tipo, quantidade, motivo } = parsed.data;
   const autor = admin.sessao.nome;
 
+  // movimentacoes.quantidade ainda é integer — arredonda pra registrar (o saldo real
+  // fica em pecas.saldo com precisão decimal). Se você lançou 0.5 LT, aparece 1
+  // no histórico mas o saldo desce 0.5.
+  const quantidadeInt = Math.max(1, Math.round(quantidade));
+
   await db.transaction(async (tx) => {
     if (tipo === "entrada") {
       await tx
@@ -42,13 +47,13 @@ export async function POST(
     } else {
       await tx
         .update(pecas)
-        .set({ saldo: quantidade })
+        .set({ saldo: String(quantidade) })
         .where(eq(pecas.id, pecaId));
     }
     await tx.insert(movimentacoes).values({
       pecaId,
       tipo,
-      quantidade,
+      quantidade: quantidadeInt,
       motivo: motivo ?? null,
       autor,
     });

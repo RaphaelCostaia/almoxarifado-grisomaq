@@ -8,22 +8,34 @@ import type { Peca } from "@/db/schema";
 import { NovaPecaDialog } from "./NovaPecaDialog";
 import { AjusteSaldoDialog } from "./AjusteSaldoDialog";
 import { useIsAdmin } from "./SessionProvider";
+import { formatSaldo, toNum } from "@/lib/formatSaldo";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function EstoqueLista() {
   const isAdmin = useIsAdmin();
   const [q, setQ] = useState("");
+  const [familia, setFamilia] = useState("");
   const [nova, setNova] = useState(false);
   const [ajusteId, setAjusteId] = useState<number | null>(null);
   const [excluirId, setExcluirId] = useState<number | null>(null);
   const [excluindo, setExcluindo] = useState(false);
+
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (familia) params.set("familia", familia);
   const { data, mutate } = useSWR<{
     pecas: Peca[];
     resumo: { total: number; repor: number; criticos: number };
-  }>(`/api/estoque?q=${encodeURIComponent(q)}`, fetcher, {
+  }>(`/api/estoque?${params}`, fetcher, {
     refreshInterval: 5000,
   });
+
+  const { data: fams } = useSWR<{ familias: string[] }>(
+    `/api/estoque/familias`,
+    fetcher,
+    { refreshInterval: 60000 }
+  );
 
   const pecas = data?.pecas ?? [];
   const r = data?.resumo ?? { total: 0, repor: 0, criticos: 0 };
@@ -40,11 +52,23 @@ export function EstoqueLista() {
           </span>
           <input
             className="input-base pl-8"
-            placeholder="Buscar peça por nome ou código…"
+            placeholder="Buscar peça por nome, código ou cód. fabricante…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
+        <select
+          className="input-base max-w-[220px]"
+          value={familia}
+          onChange={(e) => setFamilia(e.target.value)}
+        >
+          <option value="">Todas as famílias</option>
+          {(fams?.familias ?? []).map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </select>
         {isAdmin && (
           <div className="ml-auto flex items-center gap-2">
             <Link href="/compras/nova" className="btn-secondary !text-xs">
@@ -85,6 +109,7 @@ export function EstoqueLista() {
               }}
             >
               <Th>Peça</Th>
+              <Th>Família</Th>
               <Th className="text-right">Saldo</Th>
               <Th>Un.</Th>
               <Th>Localização</Th>
@@ -95,8 +120,13 @@ export function EstoqueLista() {
           </thead>
           <tbody>
             {pecas.map((p) => {
-              const critico = p.saldo === 0;
-              const repor = p.saldo > 0 && p.saldo <= p.minimo;
+              const saldoNum = toNum(p.saldo);
+              const minimoNum = toNum(p.minimo);
+              const critico = saldoNum === 0;
+              const repor = saldoNum > 0 && saldoNum <= minimoNum;
+              const codExtras = [p.codigo, p.codigoFabricante]
+                .filter(Boolean)
+                .join(" · ");
               return (
                 <tr
                   key={p.id}
@@ -110,14 +140,20 @@ export function EstoqueLista() {
                     >
                       {p.nome}
                     </div>
-                    {p.codigo && (
+                    {codExtras && (
                       <div
                         className="font-mono text-[10px] uppercase tracking-widest"
                         style={{ color: "var(--text-muted)" }}
                       >
-                        {p.codigo}
+                        {codExtras}
                       </div>
                     )}
+                  </td>
+                  <td
+                    className="px-3 py-2.5 text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {p.familia || "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <span
@@ -130,7 +166,7 @@ export function EstoqueLista() {
                           : "var(--text)",
                       }}
                     >
-                      {p.saldo}
+                      {formatSaldo(p.saldo, p.unidade)}
                     </span>
                   </td>
                   <td
@@ -149,7 +185,8 @@ export function EstoqueLista() {
                     className="px-3 py-2.5 text-right font-mono text-xs tabular-nums"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    {p.minimo} / {p.maximo}
+                    {formatSaldo(p.minimo, p.unidade)} /{" "}
+                    {formatSaldo(p.maximo, p.unidade)}
                   </td>
                   <td className="px-3 py-2.5">
                     {critico ? (
@@ -202,7 +239,7 @@ export function EstoqueLista() {
             {pecas.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-3 py-10 text-center"
                   style={{ color: "var(--text-dim)" }}
                 >

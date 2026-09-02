@@ -35,5 +35,15 @@ else
   echo "[grisomaq] db/seed-frotas.json não encontrado, pulei."
 fi
 
+# 6. Seed peças (idempotente, importa catálogo do GMAIS ~14k peças)
+if [ -f db/seed-pecas.json ]; then
+  echo "[grisomaq] Rodando seed-pecas idempotente…"
+  if ! npx --no-install tsx db/seed-pecas.ts; then
+    echo "[grisomaq] seed-pecas falhou."
+  fi
+else
+  echo "[grisomaq] db/seed-pecas.json não encontrado, pulei."
+fi
+
 echo "[grisomaq] Subindo Next.js…"
 exec "$@"

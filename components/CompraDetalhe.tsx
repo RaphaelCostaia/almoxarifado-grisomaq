@@ -19,6 +19,7 @@ import { useIsAdmin } from "./SessionProvider";
 import { ConfirmDialog } from "./PedidoDetalheDialog";
 import { FileInput } from "./FileInput";
 import { parseMoney } from "@/lib/parseMoney";
+import { formatSaldo } from "@/lib/formatSaldo";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -280,7 +281,8 @@ export function CompraDetalhe({ id }: { id: number }) {
               <>
                 <div className="font-semibold">{data.peca.nome}</div>
                 <div className="font-mono text-xs">
-                  Saldo atual: {data.peca.saldo} {data.peca.unidade}
+                  Saldo atual: {formatSaldo(data.peca.saldo, data.peca.unidade)}{" "}
+                  {data.peca.unidade}
                 </div>
               </>
             }

@@ -17,6 +17,9 @@ export function NovaPecaDialog({ onClose, onCreated }: Props) {
   const [minimo, setMinimo] = useState(0);
   const [maximo, setMaximo] = useState(0);
   const [localizacao, setLocalizacao] = useState("");
+  const [familia, setFamilia] = useState("");
+  const [codigoFabricante, setCodigoFabricante] = useState("");
+  const [codigoParalelo, setCodigoParalelo] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [camposComErro, setCamposComErro] = useState<string[]>([]);
@@ -38,6 +41,9 @@ export function NovaPecaDialog({ onClose, onCreated }: Props) {
           minimo,
           maximo,
           localizacao: localizacao.trim() || null,
+          familia: familia.trim() || null,
+          codigoFabricante: codigoFabricante.trim() || null,
+          codigoParalelo: codigoParalelo.trim() || null,
         }),
       });
       if (!res.ok) {
@@ -67,27 +73,11 @@ export function NovaPecaDialog({ onClose, onCreated }: Props) {
           <label className="label-form">Nome da peça</label>
           <input
             required
-            className={inputCls("nome")}
+            className="input-base"
             value={nome}
-            onChange={(e) => {
-              setNome(e.target.value);
-              if (camposComErro.includes("nome")) setCamposComErro([]);
-            }}
+            onChange={(e) => setNome(e.target.value)}
             placeholder="Ex: Abraçadeira de mangueira 3/4"
-            style={
-              camposComErro.includes("nome")
-                ? { borderColor: "var(--danger)" }
-                : undefined
-            }
           />
-          {camposComErro.includes("nome") && (
-            <div
-              className="mt-1 text-[11px] font-semibold"
-              style={{ color: "var(--danger)" }}
-            >
-              Nome já cadastrado. Tente uma variação (ex.: 3/4 galv, 3/4 aço).
-            </div>
-          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -165,6 +155,37 @@ export function NovaPecaDialog({ onClose, onCreated }: Props) {
             onChange={(e) => setLocalizacao(e.target.value)}
             placeholder="Ex: Prateleira A2"
           />
+        </div>
+        <div>
+          <label className="label-form">Família (opcional)</label>
+          <input
+            className="input-base"
+            value={familia}
+            onChange={(e) => setFamilia(e.target.value)}
+            placeholder="Ex: HIDRAULICA, FERRAMENTAS, FILTROS"
+            maxLength={64}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label-form">Código fabricante</label>
+            <input
+              className="input-base font-mono"
+              value={codigoFabricante}
+              onChange={(e) => setCodigoFabricante(e.target.value)}
+              placeholder="Ex: RE501020"
+              maxLength={64}
+            />
+          </div>
+          <div>
+            <label className="label-form">Código paralelo</label>
+            <input
+              className="input-base font-mono"
+              value={codigoParalelo}
+              onChange={(e) => setCodigoParalelo(e.target.value)}
+              maxLength={64}
+            />
+          </div>
         </div>
         {erro && camposComErro.length === 0 && (
           <div

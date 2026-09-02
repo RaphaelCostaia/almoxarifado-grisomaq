@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import type { Peca } from "@/db/schema";
+import { formatSaldo, toNum } from "@/lib/formatSaldo";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -92,14 +93,14 @@ export function PecaAutocomplete({ valor, onValor, onPeca, placeholder }: Props)
               </span>
               <span
                 className={`chip ${
-                  p.saldo === 0
+                  toNum(p.saldo) === 0
                     ? "!bg-red-100 !text-red-700"
-                    : p.saldo <= p.minimo
+                    : toNum(p.saldo) <= toNum(p.minimo)
                     ? "!bg-amber-100 !text-amber-800"
                     : ""
                 }`}
               >
-                {p.saldo} {p.unidade}
+                {formatSaldo(p.saldo, p.unidade)} {p.unidade}
               </span>
             </button>
           ))}

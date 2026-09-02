@@ -6,6 +6,7 @@ import { Modal } from "./NovoPedidoDialog";
 import { useCurrentUserName } from "@/lib/user";
 import type { Peca, Movimentacao } from "@/db/schema";
 import { formatBR } from "@/lib/date";
+import { formatSaldo } from "@/lib/formatSaldo";
 import clsx from "clsx";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -59,7 +60,7 @@ export function AjusteSaldoDialog({
           <div className="mt-1 text-sm">
             Saldo atual:{" "}
             <span className="font-mono font-bold">
-              {peca.saldo} {peca.unidade}
+              {formatSaldo(peca.saldo, peca.unidade)} {peca.unidade}
             </span>
           </div>
         </div>
@@ -89,6 +90,7 @@ export function AjusteSaldoDialog({
           <input
             type="number"
             min={0}
+            step={0.001}
             className="input-base"
             value={qtd}
             onChange={(e) => setQtd(Number(e.target.value))}

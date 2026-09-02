@@ -8,6 +8,7 @@ import { useCurrentUserName } from "@/lib/user";
 import { useSession } from "./SessionProvider";
 import { FileInput } from "./FileInput";
 import { AutoTextarea } from "./AutoTextarea";
+import { formatSaldo, toNum as toNumSaldo } from "@/lib/formatSaldo";
 import clsx from "clsx";
 
 export type PedidoPrefill = {
@@ -231,14 +232,14 @@ export function NovoPedidoDialog({
               <span
                 className={clsx(
                   "font-mono",
-                  peca.saldo === 0
+                  toNumSaldo(peca.saldo) === 0
                     ? "text-red-600"
-                    : peca.saldo <= peca.minimo
+                    : toNumSaldo(peca.saldo) <= toNumSaldo(peca.minimo)
                     ? "text-amber-700"
                     : "text-oliva-700"
                 )}
               >
-                {peca.saldo} {peca.unidade}
+                {formatSaldo(peca.saldo, peca.unidade)} {peca.unidade}
               </span>
               . Ao ser entregue o saldo baixa automaticamente.
             </div>

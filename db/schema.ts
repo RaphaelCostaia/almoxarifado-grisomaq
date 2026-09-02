@@ -84,18 +84,29 @@ export const pecas = pgTable(
   {
     id: serial("id").primaryKey(),
     codigo: varchar("codigo", { length: 64 }).unique(),
-    nome: varchar("nome", { length: 255 }).notNull().unique(),
+    nome: varchar("nome", { length: 255 }).notNull(),
     unidade: varchar("unidade", { length: 16 }).notNull().default("un"),
-    saldo: integer("saldo").notNull().default(0),
-    minimo: integer("minimo").notNull().default(0),
-    maximo: integer("maximo").notNull().default(0),
+    saldo: numeric("saldo", { precision: 12, scale: 3 })
+      .notNull()
+      .default("0"),
+    minimo: numeric("minimo", { precision: 12, scale: 3 })
+      .notNull()
+      .default("0"),
+    maximo: numeric("maximo", { precision: 12, scale: 3 })
+      .notNull()
+      .default("0"),
     localizacao: varchar("localizacao", { length: 128 }),
+    familia: varchar("familia", { length: 64 }),
+    codigoFabricante: varchar("codigo_fabricante", { length: 64 }),
+    codigoParalelo: varchar("codigo_paralelo", { length: 64 }),
     criadoEm: timestamp("criado_em", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (t) => ({
     nomeIdx: index("pecas_nome_idx").on(t.nome),
+    familiaIdx: index("pecas_familia_idx").on(t.familia),
+    codFabIdx: index("pecas_codigo_fabricante_idx").on(t.codigoFabricante),
   })
 );
 

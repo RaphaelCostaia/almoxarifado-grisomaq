@@ -8,29 +8,43 @@ import { exigirAdminApi } from "@/lib/api-auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const decimal = z.coerce.number().nonnegative().default(0);
+
 const NovaPecaSchema = z.object({
   codigo: z.string().max(64).optional().nullable(),
   nome: z.string().min(1).max(255),
   unidade: z.string().min(1).max(16).default("un"),
-  saldo: z.coerce.number().int().min(0).default(0),
-  minimo: z.coerce.number().int().min(0).default(0),
-  maximo: z.coerce.number().int().min(0).default(0),
+  saldo: decimal,
+  minimo: decimal,
+  maximo: decimal,
   localizacao: z.string().max(128).optional().nullable(),
+  familia: z.string().max(64).optional().nullable(),
+  codigoFabricante: z.string().max(64).optional().nullable(),
+  codigoParalelo: z.string().max(64).optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl;
   const q = url.searchParams.get("q")?.trim();
-  const limit = Math.min(200, Number(url.searchParams.get("limit") ?? 200));
+  const familia = url.searchParams.get("familia")?.trim();
+  const limit = Math.min(500, Number(url.searchParams.get("limit") ?? 200));
+
+  const conds: any[] = [];
+  if (q) {
+    conds.push(
+      or(
+        ilike(pecas.nome, `%${q}%`),
+        ilike(pecas.codigo, `%${q}%`),
+        ilike(pecas.codigoFabricante, `%${q}%`)
+      )
+    );
+  }
+  if (familia) conds.push(eq(pecas.familia, familia));
 
   const rows = await db
     .select()
     .from(pecas)
-    .where(
-      q
-        ? or(ilike(pecas.nome, `%${q}%`), ilike(pecas.codigo, `%${q}%`))
-        : undefined
-    )
+    .where(conds.length ? and(...conds) : undefined)
     .orderBy(asc(pecas.nome))
     .limit(limit);
 
@@ -59,63 +73,48 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const dados = {
+  const dados: any = {
     ...parsed.data,
     codigo: parsed.data.codigo?.trim() || null,
     nome: parsed.data.nome.trim(),
+    familia: parsed.data.familia?.trim() || null,
+    codigoFabricante: parsed.data.codigoFabricante?.trim() || null,
+    codigoParalelo: parsed.data.codigoParalelo?.trim() || null,
+    // drizzle numeric aceita string ou number — enviamos como string
+    saldo: String(parsed.data.saldo),
+    minimo: String(parsed.data.minimo),
+    maximo: String(parsed.data.maximo),
   };
 
-  // Pré-checagem explícita — retorna 409 com campo específico
-  const duplicados: string[] = [];
   if (dados.codigo) {
     const [existe] = await db
       .select({ id: pecas.id })
       .from(pecas)
       .where(eq(pecas.codigo, dados.codigo))
       .limit(1);
-    if (existe) duplicados.push("codigo");
-  }
-  const [existeNome] = await db
-    .select({ id: pecas.id })
-    .from(pecas)
-    .where(eq(pecas.nome, dados.nome))
-    .limit(1);
-  if (existeNome) duplicados.push("nome");
-
-  if (duplicados.length > 0) {
-    return NextResponse.json(
-      {
-        error: "peca_duplicada",
-        campos: duplicados,
-        mensagem:
-          duplicados.includes("codigo") && duplicados.includes("nome")
-            ? "Já existe uma peça com esse código E com esse nome."
-            : duplicados.includes("codigo")
-            ? "Já existe uma peça com esse código."
-            : "Já existe uma peça com esse nome.",
-      },
-      { status: 409 }
-    );
+    if (existe) {
+      return NextResponse.json(
+        {
+          error: "peca_duplicada",
+          campos: ["codigo"],
+          mensagem: "Já existe uma peça com esse código.",
+        },
+        { status: 409 }
+      );
+    }
   }
 
   try {
     const [p] = await db.insert(pecas).values(dados).returning();
     return NextResponse.json({ peca: p }, { status: 201 });
   } catch (e: any) {
-    // Fallback: se der corrida entre checagem e insert
     const codigoErro = e?.code ?? e?.cause?.code;
     if (codigoErro === "23505") {
-      const constraint =
-        e?.constraint_name ?? e?.constraint ?? e?.cause?.constraint_name ?? "";
-      const campo = String(constraint).includes("codigo") ? "codigo" : "nome";
       return NextResponse.json(
         {
           error: "peca_duplicada",
-          campos: [campo],
-          mensagem:
-            campo === "codigo"
-              ? "Já existe uma peça com esse código."
-              : "Já existe uma peça com esse nome.",
+          campos: ["codigo"],
+          mensagem: "Já existe uma peça com esse código.",
         },
         { status: 409 }
       );

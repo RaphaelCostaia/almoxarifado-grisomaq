@@ -98,6 +98,31 @@ async function main() {
     ADD COLUMN IF NOT EXISTS condicao_pagamento varchar(128);
   `);
 
+  // Peças (catálogo GMAIS): remove UNIQUE(nome) — 14k catálogo tem descrições repetidas,
+  // troca saldo/minimo/maximo pra numeric(12,3) — combustível/óleo é fracionário,
+  // adiciona familia, codigo_fabricante, codigo_paralelo.
+  console.log("[constraints] Ajustando tabela pecas para catálogo GMAIS…");
+  await db.execute(sql`
+    ALTER TABLE pecas DROP CONSTRAINT IF EXISTS pecas_nome_unique;
+  `);
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF (SELECT data_type FROM information_schema.columns
+           WHERE table_name='pecas' AND column_name='saldo') = 'integer' THEN
+        ALTER TABLE pecas ALTER COLUMN saldo  TYPE numeric(12,3) USING saldo::numeric;
+        ALTER TABLE pecas ALTER COLUMN minimo TYPE numeric(12,3) USING minimo::numeric;
+        ALTER TABLE pecas ALTER COLUMN maximo TYPE numeric(12,3) USING maximo::numeric;
+        RAISE NOTICE 'pecas.saldo/minimo/maximo convertidos para numeric(12,3)';
+      END IF;
+    END $$;
+  `);
+  await db.execute(sql`ALTER TABLE pecas ADD COLUMN IF NOT EXISTS familia varchar(64);`);
+  await db.execute(sql`ALTER TABLE pecas ADD COLUMN IF NOT EXISTS codigo_fabricante varchar(64);`);
+  await db.execute(sql`ALTER TABLE pecas ADD COLUMN IF NOT EXISTS codigo_paralelo varchar(64);`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS pecas_familia_idx ON pecas (familia);`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS pecas_codigo_fabricante_idx ON pecas (codigo_fabricante);`);
+
   // Frotas cadastradas (importadas da planilha da GRISOMAQ)
   console.log("[constraints] Criando enum e tabela frotas (se faltar)…");
   await db.execute(sql`
