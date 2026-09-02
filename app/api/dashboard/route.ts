@@ -54,6 +54,21 @@ export async function GET() {
     WHERE status = 'recebida' AND atualizado_em >= now() - interval '30 days'
   `);
 
+  // Compras por status (todas)
+  const comprasPorStatus = await db.execute(sql`
+    SELECT status::text as status, COUNT(*)::int as c
+    FROM compras
+    GROUP BY status
+  `);
+
+  // Compradas aguardando chegar (comprada = fornecedor confirmou, ainda não chegou)
+  const aguardandoChegar = await db.execute(sql`
+    SELECT COUNT(*)::int as c,
+           COALESCE(SUM(valor_total), 0)::float as total
+    FROM compras
+    WHERE status = 'comprada'
+  `);
+
   const topFornecedores = await db.execute(sql`
     SELECT fornecedor, COALESCE(SUM(valor_total), 0)::float as total, COUNT(*)::int as c
     FROM compras
@@ -109,5 +124,13 @@ export async function GET() {
       label: r.label,
       c: Number(r.c),
     })),
+    comprasPorStatus: (comprasPorStatus as any[]).map((r) => ({
+      status: r.status,
+      c: Number(r.c),
+    })),
+    aguardandoChegar: {
+      c: Number((aguardandoChegar as any[])[0]?.c ?? 0),
+      total: Number((aguardandoChegar as any[])[0]?.total ?? 0),
+    },
   });
 }

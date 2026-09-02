@@ -1,7 +1,12 @@
 "use client";
 
 import useSWR from "swr";
-import { STATUS_PEDIDO_LABELS, type Pedido } from "@/db/schema";
+import {
+  STATUS_PEDIDO_LABELS,
+  STATUS_COMPRA_LABELS,
+  type Pedido,
+  type Compra,
+} from "@/db/schema";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -14,6 +19,8 @@ type DadosDashboard = {
   gastoMes: { total: number; c: number };
   topFornecedores: { fornecedor: string; total: number; c: number }[];
   serieDiaria: { label: string; c: number }[];
+  comprasPorStatus: { status: Compra["status"]; c: number }[];
+  aguardandoChegar: { c: number; total: number };
 };
 
 export function Dashboard() {
@@ -51,11 +58,21 @@ export function Dashboard() {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
         <Kpi
           n={data.totalPedidos}
           label="Total de pedidos"
           hint="desde o início"
+        />
+        <Kpi
+          n={data.aguardandoChegar?.c ?? 0}
+          label="Aguardando chegar"
+          hint={
+            (data.aguardandoChegar?.total ?? 0) > 0
+              ? `R$ ${data.aguardandoChegar.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} pra receber`
+              : "compras já compradas"
+          }
+          tone={(data.aguardandoChegar?.c ?? 0) > 0 ? "warning" : undefined}
         />
         <Kpi
           n={data.gastoMes.c}
@@ -146,6 +163,62 @@ export function Dashboard() {
                             : s.status === "entregue"
                             ? "var(--brand)"
                             : "var(--info)",
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card titulo="Compras por status" subtitulo="tempo real">
+          <div className="space-y-2">
+            {(!data.comprasPorStatus || data.comprasPorStatus.length === 0) && (
+              <div
+                className="text-sm"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Sem solicitações de compra ainda.
+              </div>
+            )}
+            {(data.comprasPorStatus ?? []).map((s) => {
+              const total = (data.comprasPorStatus ?? []).reduce(
+                (a, b) => a + b.c,
+                0
+              );
+              const pct = total > 0 ? (s.c / total) * 100 : 0;
+              return (
+                <div key={s.status} className="text-xs">
+                  <div className="flex items-center justify-between">
+                    <span style={{ color: "var(--text)" }}>
+                      {STATUS_COMPRA_LABELS[s.status]}
+                    </span>
+                    <span
+                      className="font-mono tabular-nums"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {s.c} · {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div
+                    className="mt-1 h-1.5 overflow-hidden rounded-full"
+                    style={{ background: "var(--surface-3)" }}
+                  >
+                    <div
+                      className="h-full"
+                      style={{
+                        width: `${pct}%`,
+                        background:
+                          s.status === "cancelada"
+                            ? "var(--danger)"
+                            : s.status === "recebida"
+                            ? "var(--brand)"
+                            : s.status === "comprada"
+                            ? "var(--warning)"
+                            : s.status === "aprovada"
+                            ? "var(--info)"
+                            : "var(--text-muted)",
                       }}
                     />
                   </div>

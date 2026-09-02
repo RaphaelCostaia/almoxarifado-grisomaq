@@ -431,13 +431,23 @@ export function PedidoDetalheDialog({
             </button>
           )}
           <button
-            className="btn-ghost !text-[11px]"
-            style={{ color: "var(--text-dim)" }}
+            className={
+              pedido.status === "cancelada" ? "btn-danger" : "btn-ghost !text-[11px]"
+            }
+            style={
+              pedido.status === "cancelada"
+                ? undefined
+                : { color: "var(--text-dim)" }
+            }
             disabled={salvando}
             onClick={() => setConfirmando("excluir")}
-            title="Apaga definitivamente — use quando criou por engano"
+            title={
+              pedido.status === "cancelada"
+                ? "Apaga o pedido cancelado do sistema"
+                : "Apaga definitivamente — use quando criou por engano"
+            }
           >
-            🗑 Excluir permanentemente
+            🗑 {pedido.status === "cancelada" ? "Excluir cancelado" : "Excluir permanentemente"}
           </button>
         </div>
       )}

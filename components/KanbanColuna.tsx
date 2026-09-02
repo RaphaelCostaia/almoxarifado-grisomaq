@@ -13,6 +13,11 @@ type Props = {
   arrastavel: boolean;
   onAbrir: (id: number) => void;
   onDrop?: (pedidoId: number) => Promise<void> | void;
+  acaoLimpar?: {
+    label: string;
+    titulo: string;
+    onClick: () => void;
+  };
 };
 
 export function KanbanColuna({
@@ -23,6 +28,7 @@ export function KanbanColuna({
   arrastavel,
   onAbrir,
   onDrop,
+  acaoLimpar,
 }: Props) {
   const [over, setOver] = useState(false);
   return (
@@ -61,12 +67,31 @@ export function KanbanColuna({
             {titulo}
           </span>
         </div>
-        <span
-          className="font-mono text-[11px] font-bold tabular-nums"
-          style={{ color: "var(--text)" }}
-        >
-          {pedidos.length}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {acaoLimpar && pedidos.length > 0 && (
+            <button
+              className="rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest transition"
+              style={{
+                background: "var(--danger-soft)",
+                color: "var(--danger)",
+                border: "1px solid var(--danger-border)",
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                acaoLimpar.onClick();
+              }}
+              title={acaoLimpar.titulo}
+            >
+              🗑 {acaoLimpar.label}
+            </button>
+          )}
+          <span
+            className="font-mono text-[11px] font-bold tabular-nums"
+            style={{ color: "var(--text)" }}
+          >
+            {pedidos.length}
+          </span>
+        </div>
       </div>
       <div className="dense-scroll flex-1 space-y-1.5 overflow-y-auto p-1.5">
         {pedidos.length === 0 ? (

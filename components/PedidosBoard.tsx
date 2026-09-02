@@ -191,6 +191,31 @@ export function PedidosBoard() {
             pedidos={porStatus.get(col.key) ?? []}
             destacarUrgentes={novosUrgentes}
             arrastavel={isAdmin}
+            acaoLimpar={
+              isAdmin && col.key === "cancelada"
+                ? {
+                    label: "Limpar",
+                    titulo: "Apagar permanentemente todos os pedidos cancelados",
+                    onClick: async () => {
+                      const qtd = (porStatus.get("cancelada") ?? []).length;
+                      const ok = window.confirm(
+                        `Apagar permanentemente ${qtd} pedido(s) cancelado(s)?\n\nIsso NÃO pode ser desfeito.`
+                      );
+                      if (!ok) return;
+                      const res = await fetch(
+                        "/api/pedidos/limpar-cancelados",
+                        { method: "POST" }
+                      );
+                      const j = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        mutate();
+                      } else {
+                        alert(j.error ?? "Falha ao limpar cancelados.");
+                      }
+                    },
+                  }
+                : undefined
+            }
             onAbrir={(id) => setDetalheId(id)}
             onDrop={
               isAdmin
