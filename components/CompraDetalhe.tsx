@@ -235,7 +235,7 @@ export function CompraDetalhe({ id }: { id: number }) {
               value={c.valorUnit ? `R$ ${c.valorUnit}` : "—"}
             />
             <Card
-              label="Valor total"
+              label={c.status === "recebida" ? "Valor pago" : "Valor previsto"}
               value={c.valorTotal ? `R$ ${c.valorTotal}` : "—"}
             />
             <Card
