@@ -9,6 +9,7 @@ import { useCurrentUserName } from "@/lib/user";
 import { useIsAdmin } from "./SessionProvider";
 import { AutoTextarea } from "./AutoTextarea";
 import { parseMoney } from "@/lib/parseMoney";
+import { formatSaldo, toNum } from "@/lib/formatSaldo";
 import type { Peca, Pedido } from "@/db/schema";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -72,6 +73,9 @@ export function NovaCompraForm({
   const totalNumero = parseMoney(valorUnit);
   const total = totalNumero != null ? totalNumero * qtd : null;
 
+  const saldoPeca = peca ? toNum(peca.saldo) : null;
+  const bloqueado = peca != null && saldoPeca != null && saldoPeca > 0;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
@@ -93,7 +97,10 @@ export function NovaCompraForm({
           observacoes: observacoes || null,
         }),
       });
-      if (!res.ok) throw new Error("Falha ao registrar solicitação");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.mensagem ?? j.error ?? "Falha ao registrar solicitação");
+      }
       const j = await res.json();
       router.push(`/compras/${j.compra.id}`);
     } catch (e: any) {
@@ -166,11 +173,33 @@ export function NovaCompraForm({
             }}
             placeholder="Buscar peça do estoque ou escrever novo item…"
           />
-          {peca && (
+          {peca && !bloqueado && (
             <div className="mt-1 text-xs text-oliva-700">
               Vinculado ao estoque:{" "}
               <span className="font-semibold">{peca.nome}</span>. Ao receber, o
               saldo será acrescido em <span className="font-mono">{qtd}</span>.
+            </div>
+          )}
+          {peca && bloqueado && (
+            <div
+              className="mt-2 rounded-md border p-2.5 text-xs"
+              style={{
+                borderColor: "var(--danger-border)",
+                background: "var(--danger-soft)",
+                color: "var(--danger)",
+              }}
+            >
+              <div className="font-semibold">
+                ⚠ Compra bloqueada — estoque ainda tem saldo
+              </div>
+              <div className="mt-0.5">
+                <span className="font-mono">
+                  {formatSaldo(peca.saldo, peca.unidade)} {peca.unidade}
+                </span>{" "}
+                disponíveis de <b>{peca.nome}</b>. A regra do sistema só permite
+                abrir compra quando o saldo estiver <b>zerado</b>. Aguarde o
+                consumo ou faça um ajuste de saldo no Estoque.
+              </div>
             </div>
           )}
         </div>
@@ -294,7 +323,15 @@ export function NovaCompraForm({
             A solicitação será criada como <b>Rascunho</b>. Você aprova, marca
             como comprada e depois recebida.
           </div>
-          <button className="btn-primary" disabled={salvando}>
+          <button
+            className="btn-primary"
+            disabled={salvando || bloqueado}
+            title={
+              bloqueado
+                ? "Estoque ainda tem saldo — só é permitido comprar peça zerada"
+                : undefined
+            }
+          >
             {salvando ? "Registrando…" : "Registrar solicitação"}
           </button>
         </div>

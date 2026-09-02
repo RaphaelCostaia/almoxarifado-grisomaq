@@ -71,6 +71,37 @@ export async function POST(req: NextRequest) {
     );
   }
   const d = { ...parsed.data, autor: admin.sessao.nome };
+
+  // Regra: só permite solicitação de compra pra peça do estoque se o saldo
+  // estiver zerado. Compra "livre" (sem pecaId) continua permitida — é o caso
+  // de peça que não está cadastrada. Se o admin quer repor uma peça que ainda
+  // tem saldo, o correto é aguardar zerar ou usar o ajuste de estoque.
+  if (d.pecaId) {
+    const [p] = await db
+      .select({ nome: pecas.nome, saldo: pecas.saldo, unidade: pecas.unidade })
+      .from(pecas)
+      .where(eq(pecas.id, d.pecaId))
+      .limit(1);
+    if (!p) {
+      return NextResponse.json(
+        { error: "peca_nao_encontrada" },
+        { status: 404 }
+      );
+    }
+    const saldoAtual = Number(p.saldo);
+    if (Number.isFinite(saldoAtual) && saldoAtual > 0) {
+      return NextResponse.json(
+        {
+          error: "estoque_nao_zerado",
+          mensagem: `Não dá pra abrir compra dessa peça — ainda tem ${p.saldo} ${p.unidade} no estoque. Só é permitido solicitar compra quando o saldo estiver zerado.`,
+          saldo: p.saldo,
+          unidade: p.unidade,
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const valorTotal =
     d.valorUnit != null ? Number(d.valorUnit) * d.quantidade : null;
 

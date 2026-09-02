@@ -206,15 +206,24 @@ export function EstoqueLista() {
                         >
                           Ajustar
                         </button>
-                        <Link
-                          href={{
-                            pathname: "/compras/nova",
-                            query: { peca: p.id },
-                          }}
-                          className="btn-ghost"
-                        >
-                          Comprar
-                        </Link>
+                        {critico ? (
+                          <Link
+                            href={{
+                              pathname: "/compras/nova",
+                              query: { peca: p.id },
+                            }}
+                            className="btn-ghost"
+                          >
+                            Comprar
+                          </Link>
+                        ) : (
+                          <span
+                            className="btn-ghost cursor-not-allowed opacity-40"
+                            title="Só permite comprar quando o saldo estiver zerado"
+                          >
+                            Comprar
+                          </span>
+                        )}
                         <button
                           className="btn-ghost"
                           onClick={() => setExcluirId(p.id)}
