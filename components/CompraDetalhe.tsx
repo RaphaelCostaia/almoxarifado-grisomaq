@@ -18,6 +18,7 @@ import { useCurrentUserName } from "@/lib/user";
 import { useIsAdmin } from "./SessionProvider";
 import { ConfirmDialog } from "./PedidoDetalheDialog";
 import { FileInput } from "./FileInput";
+import { parseMoney } from "@/lib/parseMoney";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -49,7 +50,9 @@ export function CompraDetalhe({ id }: { id: number }) {
 
   if (!data) {
     return (
-      <div className="p-6 text-sm text-oliva-700">Carregando…</div>
+      <div className="p-6 text-sm" style={{ color: "var(--text-muted)" }}>
+        Carregando…
+      </div>
     );
   }
   const c = data.compra;
@@ -84,10 +87,8 @@ export function CompraDetalhe({ id }: { id: number }) {
     if (aFornecedor.trim() && aFornecedor.trim() !== c.fornecedor) {
       body.fornecedor = aFornecedor.trim();
     }
-    if (aValorUnit.trim()) {
-      const v = Number(aValorUnit.replace(",", "."));
-      if (!Number.isNaN(v)) body.valorUnit = v;
-    }
+    const v = parseMoney(aValorUnit);
+    if (v != null) body.valorUnit = v;
     if (avancarPara === "comprada" && aCondicao.trim()) {
       body.condicaoPagamento = aCondicao.trim();
     }
@@ -141,10 +142,16 @@ export function CompraDetalhe({ id }: { id: number }) {
     <div className="mx-auto max-w-3xl space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-oliva-700">
+          <div
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: "var(--text-muted)" }}
+          >
             Compras
           </div>
-          <h1 className="text-2xl font-black text-oliva-900">
+          <h1
+            className="text-2xl font-black tracking-tight"
+            style={{ color: "var(--text)" }}
+          >
             Solicitação #{c.id}
           </h1>
         </div>
@@ -154,33 +161,41 @@ export function CompraDetalhe({ id }: { id: number }) {
       </div>
 
       {/* Trilho de status */}
-      <div className="rounded-lg border border-oliva-100 bg-creme-50 p-4">
+      <div className="card p-4">
         <div className="flex items-center gap-1">
           {STATUS_COMPRA_TRILHO.map((s, i) => {
             const ativo = i <= trilhoIdx && c.status !== "cancelada";
             const atual = STATUS_COMPRA_TRILHO[trilhoIdx] === s && c.status !== "cancelada";
+            const style: React.CSSProperties = atual
+              ? { background: "var(--brand)", color: "#000", border: "1px solid var(--brand)" }
+              : ativo
+              ? {
+                  background: "var(--brand-soft)",
+                  color: "var(--brand)",
+                  border: "1px solid var(--brand-border)",
+                }
+              : {
+                  background: "var(--surface-3)",
+                  color: "var(--text-muted)",
+                  border: "1px solid var(--border)",
+                };
             return (
               <div key={s} className="flex flex-1 items-center gap-1">
                 <div
-                  className={clsx(
-                    "flex h-8 flex-1 items-center justify-center rounded-md text-xs font-bold uppercase tracking-widest",
-                    atual
-                      ? "bg-oliva-600 text-white"
-                      : ativo
-                      ? "bg-oliva-100 text-oliva-800"
-                      : "bg-white text-oliva-500"
-                  )}
+                  className="flex h-9 flex-1 items-center justify-center rounded-md text-[10px] font-bold uppercase tracking-widest"
+                  style={style}
                 >
                   {STATUS_COMPRA_LABELS[s]}
                 </div>
                 {i < STATUS_COMPRA_TRILHO.length - 1 && (
                   <div
-                    className={clsx(
-                      "h-0.5 w-3",
-                      i < trilhoIdx && c.status !== "cancelada"
-                        ? "bg-oliva-500"
-                        : "bg-oliva-100"
-                    )}
+                    className="h-0.5 w-3 rounded-full"
+                    style={{
+                      background:
+                        i < trilhoIdx && c.status !== "cancelada"
+                          ? "var(--brand)"
+                          : "var(--border)",
+                    }}
                   />
                 )}
               </div>
@@ -188,7 +203,10 @@ export function CompraDetalhe({ id }: { id: number }) {
           })}
         </div>
         {c.status === "cancelada" && (
-          <div className="mt-2 text-center text-sm font-bold text-red-700">
+          <div
+            className="mt-3 text-center text-sm font-bold"
+            style={{ color: "var(--danger)" }}
+          >
             Solicitação cancelada.
           </div>
         )}
@@ -200,7 +218,10 @@ export function CompraDetalhe({ id }: { id: number }) {
           value={
             <>
               <div className="font-semibold">{c.descricao}</div>
-              <div className="font-mono text-xs text-oliva-700">
+              <div
+                className="font-mono text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
                 {c.quantidade} {c.unidade}
               </div>
             </>
@@ -234,7 +255,8 @@ export function CompraDetalhe({ id }: { id: number }) {
             value={
               <Link
                 href="/pedidos"
-                className="font-semibold text-oliva-800 hover:underline"
+                className="font-semibold hover:underline"
+                style={{ color: "var(--brand)" }}
               >
                 #{c.pedidoId}
                 {data.pedidoVinculado &&
@@ -266,7 +288,8 @@ export function CompraDetalhe({ id }: { id: number }) {
                   <a
                     href={c.nfUrl}
                     target="_blank"
-                    className="text-xs text-oliva-700 underline"
+                    className="text-xs underline"
+                    style={{ color: "var(--text-muted)" }}
                     rel="noopener"
                   >
                     Abrir arquivo
@@ -279,8 +302,14 @@ export function CompraDetalhe({ id }: { id: number }) {
       </div>
 
       {c.observacoes && (
-        <div className="rounded-md bg-creme-100 p-3 text-sm">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-oliva-700">
+        <div
+          className="rounded-md p-3 text-sm"
+          style={{ background: "var(--surface-3)", color: "var(--text)" }}
+        >
+          <div
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: "var(--text-muted)" }}
+          >
             Observações
           </div>
           {c.observacoes}
@@ -289,7 +318,7 @@ export function CompraDetalhe({ id }: { id: number }) {
 
       {/* Ações — só admin */}
       {isAdmin && (
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-oliva-100 bg-creme-50 p-3 shadow-sm">
+      <div className="card flex flex-wrap items-center gap-2 p-3">
         {c.status === "rascunho" && (
           <button
             className="btn-primary"
@@ -352,16 +381,25 @@ export function CompraDetalhe({ id }: { id: number }) {
 
       {/* Histórico */}
       <div>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-oliva-800">
+        <div
+          className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: "var(--text-muted)" }}
+        >
           Histórico
         </div>
         <ul className="space-y-1 text-sm">
           {data.eventos.map((ev) => (
             <li key={ev.id} className="flex items-start gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-oliva-500" />
+              <span
+                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: "var(--brand)" }}
+              />
               <div>
-                <span className="text-oliva-900">{ev.texto}</span>
-                <span className="ml-1 font-mono text-[11px] text-oliva-600">
+                <span style={{ color: "var(--text)" }}>{ev.texto}</span>
+                <span
+                  className="ml-1 font-mono text-[10px]"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   — {ev.autor}, {formatBR(ev.criadoEm)}
                 </span>
               </div>
@@ -572,10 +610,16 @@ export function CompraDetalhe({ id }: { id: number }) {
             style={{ boxShadow: "var(--shadow-md)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-2 text-lg font-black text-oliva-900">
+            <h3
+              className="mb-2 text-lg font-bold tracking-tight"
+              style={{ color: "var(--text)" }}
+            >
               Confirmar recebimento
             </h3>
-            <p className="mb-3 text-sm text-oliva-700">
+            <p
+              className="mb-3 text-sm"
+              style={{ color: "var(--text-muted)" }}
+            >
               Isso dá entrada de <b>{c.quantidade} {c.unidade}</b> no estoque
               {data.peca ? ` de ${data.peca.nome}` : ""}.
               {c.pedidoId && (
@@ -633,11 +677,19 @@ function Card({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-oliva-100 bg-creme-50 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-oliva-700">
+    <div
+      className="rounded-md border p-3"
+      style={{ background: "var(--surface-3)", borderColor: "var(--border)" }}
+    >
+      <div
+        className="text-[10px] font-semibold uppercase tracking-widest"
+        style={{ color: "var(--text-muted)" }}
+      >
         {label}
       </div>
-      <div className="text-sm text-oliva-900">{value}</div>
+      <div className="text-sm" style={{ color: "var(--text)" }}>
+        {value}
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { PecaAutocomplete } from "./PecaAutocomplete";
 import { useCurrentUserName } from "@/lib/user";
 import { useIsAdmin } from "./SessionProvider";
 import { AutoTextarea } from "./AutoTextarea";
+import { parseMoney } from "@/lib/parseMoney";
 import type { Peca, Pedido } from "@/db/schema";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -68,10 +69,8 @@ export function NovaCompraForm({
     }
   }, [pedidoPre, descricao, qtdInicial]);
 
-  const total =
-    valorUnit && !Number.isNaN(Number(valorUnit))
-      ? Number(valorUnit) * qtd
-      : null;
+  const totalNumero = parseMoney(valorUnit);
+  const total = totalNumero != null ? totalNumero * qtd : null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,7 +87,7 @@ export function NovaCompraForm({
           quantidade: qtd,
           unidade: peca ? peca.unidade : unidade,
           fornecedor: fornecedor || null,
-          valorUnit: valorUnit ? Number(valorUnit) : null,
+          valorUnit: parseMoney(valorUnit),
           condicaoPagamento: condicaoPagamento.trim() || null,
           prazo: prazo || null,
           observacoes: observacoes || null,
