@@ -12,7 +12,7 @@ import {
   pedidos,
   STATUS_COMPRA_LABELS,
 } from "@/db/schema";
-import { exigirAdminApi } from "@/lib/api-auth";
+import { exigirAdminApi, exigirSessaoApi } from "@/lib/api-auth";
 import { criarNotificacao } from "@/lib/notificar";
 
 export const runtime = "nodejs";
@@ -35,6 +35,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const auth = await exigirSessaoApi();
+  if (!auth.ok) return auth.res;
   const id = Number(params.id);
   const [c] = await db.select().from(compras).where(eq(compras.id, id));
   if (!c) return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
@@ -53,7 +55,28 @@ export async function GET(
     const [p] = await db.select().from(pedidos).where(eq(pedidos.id, c.pedidoId));
     pedidoVinculado = p ?? null;
   }
-  return NextResponse.json({ compra: c, eventos, peca, pedidoVinculado });
+  // Funcionário não enxerga valores nem eventos que mencionam preço/condição de pagamento
+  const admin = auth.sessao.role === "admin";
+  const seguro = admin
+    ? c
+    : {
+        ...c,
+        valorUnit: null,
+        valorTotal: null,
+        condicaoPagamento: null,
+      };
+  const eventosSeguros = admin
+    ? eventos
+    : eventos.filter(
+        (e) =>
+          !/R\$|preço|condição de pagamento|valor/i.test(e.texto)
+      );
+  return NextResponse.json({
+    compra: seguro,
+    eventos: eventosSeguros,
+    peca,
+    pedidoVinculado,
+  });
 }
 
 export async function DELETE(

@@ -4,6 +4,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { compras, compraEventos, pecas, pedidoEventos, pedidos } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
+import { sessaoAtual } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +45,18 @@ export async function GET(req: NextRequest) {
       desc(compras.criadoEm)
     );
 
-  return NextResponse.json({ compras: rows });
+  // Funcionário não enxerga valores financeiros
+  const sess = await sessaoAtual();
+  const seguro =
+    sess?.role === "admin"
+      ? rows
+      : rows.map((r) => ({
+          ...r,
+          valorUnit: null,
+          valorTotal: null,
+          condicaoPagamento: null,
+        }));
+  return NextResponse.json({ compras: seguro });
 }
 
 export async function POST(req: NextRequest) {

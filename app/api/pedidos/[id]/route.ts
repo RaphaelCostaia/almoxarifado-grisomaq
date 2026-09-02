@@ -72,11 +72,23 @@ export async function GET(
     .where(eq(compras.pedidoId, id))
     .orderBy(desc(compras.criadoEm));
 
+  // Funcionário não enxerga valores nas compras vinculadas
+  const auth = await exigirSessaoApi();
+  const comprasSeguras =
+    auth.ok && auth.sessao.role !== "admin"
+      ? comprasVinculadas.map((c) => ({
+          ...c,
+          valorUnit: null,
+          valorTotal: null,
+          condicaoPagamento: null,
+        }))
+      : comprasVinculadas;
+
   return NextResponse.json({
     pedido: pedido[0],
     eventos,
     peca,
-    compras: comprasVinculadas,
+    compras: comprasSeguras,
   });
 }
 

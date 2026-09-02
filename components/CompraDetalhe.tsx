@@ -207,18 +207,22 @@ export function CompraDetalhe({ id }: { id: number }) {
           }
         />
         <Card label="Fornecedor" value={c.fornecedor || "—"} />
-        <Card
-          label="Valor unit."
-          value={c.valorUnit ? `R$ ${c.valorUnit}` : "—"}
-        />
-        <Card
-          label="Valor total"
-          value={c.valorTotal ? `R$ ${c.valorTotal}` : "—"}
-        />
-        <Card
-          label="Condição de pagamento"
-          value={c.condicaoPagamento || "—"}
-        />
+        {isAdmin && (
+          <>
+            <Card
+              label="Valor unit."
+              value={c.valorUnit ? `R$ ${c.valorUnit}` : "—"}
+            />
+            <Card
+              label="Valor total"
+              value={c.valorTotal ? `R$ ${c.valorTotal}` : "—"}
+            />
+            <Card
+              label="Condição de pagamento"
+              value={c.condicaoPagamento || "—"}
+            />
+          </>
+        )}
         <Card
           label="Prazo desejado"
           value={c.prazo ? formatBRDia(c.prazo) : "—"}

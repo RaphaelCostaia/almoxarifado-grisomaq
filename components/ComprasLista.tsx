@@ -130,7 +130,7 @@ export function ComprasLista() {
               </div>
             </div>
             <div className="text-right">
-              {c.valorTotal && (
+              {isAdmin && c.valorTotal && (
                 <div
                   className="font-mono text-sm font-bold tabular-nums"
                   style={{ color: "var(--text)" }}

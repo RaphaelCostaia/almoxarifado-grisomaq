@@ -319,7 +319,7 @@ export function PedidoDetalheDialog({
                   {cp.fornecedor}
                 </span>
               )}
-              {cp.valorTotal && (
+              {isAdmin && cp.valorTotal && (
                 <span
                   className="font-mono text-xs font-bold"
                   style={{ color: "var(--brand)" }}
