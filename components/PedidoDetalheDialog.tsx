@@ -260,19 +260,31 @@ export function PedidoDetalheDialog({
       )}
 
       {!peca && isAdmin && (
-        <div
-          className="mt-3 rounded-md p-2 text-xs"
-          style={{
-            background: "var(--warning-soft)",
-            color: "var(--warning)",
-          }}
-        >
-          ⚠ Este pedido não está vinculado a uma peça do estoque — a baixa
-          automática não vai acontecer ao entregar. Considere cadastrar a peça
-          no estoque.
+        <div className="mt-3 space-y-2">
+          <div
+            className="rounded-md p-2 text-xs"
+            style={{
+              background: "var(--surface-3)",
+              color: "var(--text-muted)",
+            }}
+          >
+            Este pedido não está vinculado a uma peça do estoque. Você pode
+            solicitar compra direto pra atender ele:
+          </div>
+          <Link
+            href={{
+              pathname: "/compras/nova",
+              query: {
+                pedido: pedido.id,
+                qtd: pedido.quantidade,
+              },
+            }}
+            className="btn-primary w-full justify-center"
+          >
+            📦 Solicitar compra pra este pedido →
+          </Link>
         </div>
       )}
-
       {(data.compras ?? []).length > 0 && (
         <div className="mt-3 space-y-1.5">
           <div
