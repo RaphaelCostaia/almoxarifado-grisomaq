@@ -7,8 +7,10 @@ import {
   pedidoEventos,
   pecas,
   movimentacoes,
+  compras,
   STATUS_PEDIDO_LABELS,
 } from "@/db/schema";
+import { desc } from "drizzle-orm";
 import { exigirAdminApi, exigirSessaoApi } from "@/lib/api-auth";
 import { criarNotificacao } from "@/lib/notificar";
 
@@ -63,7 +65,19 @@ export async function GET(
     peca = p[0] ?? null;
   }
 
-  return NextResponse.json({ pedido: pedido[0], eventos, peca });
+  // Compras vinculadas a este pedido (mais recente primeiro)
+  const comprasVinculadas = await db
+    .select()
+    .from(compras)
+    .where(eq(compras.pedidoId, id))
+    .orderBy(desc(compras.criadoEm));
+
+  return NextResponse.json({
+    pedido: pedido[0],
+    eventos,
+    peca,
+    compras: comprasVinculadas,
+  });
 }
 
 export async function DELETE(

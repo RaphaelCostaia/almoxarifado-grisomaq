@@ -16,6 +16,7 @@ const NovaCompraSchema = z.object({
   unidade: z.string().min(1).max(16).default("un"),
   fornecedor: z.string().max(128).optional().nullable(),
   valorUnit: z.coerce.number().optional().nullable(),
+  condicaoPagamento: z.string().max(128).optional().nullable(),
   prazo: z.string().optional().nullable(),
   observacoes: z.string().optional().nullable(),
 });
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
       fornecedor: d.fornecedor ?? null,
       valorUnit: d.valorUnit != null ? d.valorUnit.toFixed(2) : null,
       valorTotal: valorTotal != null ? valorTotal.toFixed(2) : null,
+      condicaoPagamento: d.condicaoPagamento?.trim() || null,
       prazo: d.prazo ? new Date(d.prazo) : null,
       observacoes: d.observacoes ?? null,
       autor: d.autor,

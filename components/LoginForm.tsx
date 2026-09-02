@@ -18,7 +18,7 @@ export function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome, senha }),
+        body: JSON.stringify({ nome: nome.trim(), senha }),
       });
       if (!res.ok) {
         setErro("Nome ou senha inválidos, ou usuário inativo.");

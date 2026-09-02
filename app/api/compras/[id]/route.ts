@@ -24,6 +24,7 @@ const PatchSchema = z.object({
     .optional(),
   fornecedor: z.string().max(128).optional().nullable(),
   valorUnit: z.coerce.number().optional().nullable(),
+  condicaoPagamento: z.string().max(128).optional().nullable(),
   prazo: z.string().optional().nullable(),
   nfNumero: z.string().max(64).optional().nullable(),
   nfUrl: z.string().min(1).max(500).optional().nullable(),
@@ -100,11 +101,64 @@ export async function PATCH(
   const [atual] = await db.select().from(compras).where(eq(compras.id, id));
   if (!atual) return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
 
+  // Valores efetivos após o merge (usa novo se veio, senão o atual)
+  const fornecedorEfetivo =
+    dados.fornecedor !== undefined ? dados.fornecedor : atual.fornecedor;
+  const valorUnitEfetivo =
+    dados.valorUnit !== undefined ? dados.valorUnit : atual.valorUnit;
+  const condicaoEfetiva =
+    dados.condicaoPagamento !== undefined
+      ? dados.condicaoPagamento
+      : atual.condicaoPagamento;
+
+  // Validação: aprovada exige fornecedor + valor unit; comprada exige tudo + cond. pagamento
+  if (dados.status && dados.status !== atual.status) {
+    const camposFaltando: string[] = [];
+    if (dados.status === "aprovada" || dados.status === "comprada") {
+      if (!fornecedorEfetivo || String(fornecedorEfetivo).trim() === "") {
+        camposFaltando.push("fornecedor");
+      }
+      if (
+        valorUnitEfetivo == null ||
+        Number(valorUnitEfetivo) <= 0
+      ) {
+        camposFaltando.push("valorUnit");
+      }
+    }
+    if (dados.status === "comprada") {
+      if (!condicaoEfetiva || String(condicaoEfetiva).trim() === "") {
+        camposFaltando.push("condicaoPagamento");
+      }
+    }
+    if (camposFaltando.length > 0) {
+      const nomes = camposFaltando
+        .map((c) =>
+          c === "fornecedor"
+            ? "fornecedor"
+            : c === "valorUnit"
+            ? "valor unitário"
+            : "condição de pagamento"
+        )
+        .join(", ");
+      return NextResponse.json(
+        {
+          error: "dados_pendentes",
+          camposFaltando,
+          mensagem: `Antes de avançar pra "${dados.status}", preencha: ${nomes}.`,
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   const update: any = { atualizadoEm: new Date() };
   const eventos: string[] = [];
 
   if (dados.fornecedor !== undefined && dados.fornecedor !== atual.fornecedor) {
     update.fornecedor = dados.fornecedor;
+    if (dados.fornecedor && !atual.fornecedor) {
+      eventos.push(`Fornecedor definido: ${dados.fornecedor}.`);
+    }
   }
   if (dados.valorUnit !== undefined) {
     update.valorUnit = dados.valorUnit != null ? dados.valorUnit.toFixed(2) : null;
@@ -112,6 +166,22 @@ export async function PATCH(
       dados.valorUnit != null
         ? (Number(dados.valorUnit) * atual.quantidade).toFixed(2)
         : null;
+    if (dados.valorUnit != null && atual.valorUnit == null) {
+      eventos.push(
+        `Preço definido: R$ ${dados.valorUnit.toFixed(2)} unit / R$ ${(
+          Number(dados.valorUnit) * atual.quantidade
+        ).toFixed(2)} total.`
+      );
+    }
+  }
+  if (
+    dados.condicaoPagamento !== undefined &&
+    dados.condicaoPagamento !== atual.condicaoPagamento
+  ) {
+    update.condicaoPagamento = dados.condicaoPagamento?.trim() || null;
+    if (dados.condicaoPagamento && !atual.condicaoPagamento) {
+      eventos.push(`Condição de pagamento: ${dados.condicaoPagamento}.`);
+    }
   }
   if (dados.prazo !== undefined) {
     update.prazo = dados.prazo ? new Date(dados.prazo) : null;
@@ -127,6 +197,29 @@ export async function PATCH(
     eventos.push(
       `Status alterado para ${STATUS_COMPRA_LABELS[dados.status]}.`
     );
+
+    // Notifica o solicitante do pedido vinculado (etapas intermediárias)
+    if (
+      atual.pedidoId &&
+      (dados.status === "aprovada" || dados.status === "comprada")
+    ) {
+      const [ped] = await db
+        .select()
+        .from(pedidos)
+        .where(eq(pedidos.id, atual.pedidoId));
+      if (ped) {
+        const msg =
+          dados.status === "aprovada"
+            ? `A compra da sua peça foi aprovada (pedido #${ped.id}).`
+            : `A compra da sua peça foi efetivada com o fornecedor (pedido #${ped.id}).`;
+        await criarNotificacao({
+          destinatario: ped.solicitante,
+          autor: dados.autor,
+          pedidoId: ped.id,
+          texto: msg,
+        });
+      }
+    }
 
     // Ao receber, dá entrada no estoque + empurra o pedido vinculado
     if (dados.status === "recebida") {

@@ -158,6 +158,7 @@ export const compras = pgTable(
     fornecedor: varchar("fornecedor", { length: 128 }),
     valorUnit: numeric("valor_unit", { precision: 12, scale: 2 }),
     valorTotal: numeric("valor_total", { precision: 12, scale: 2 }),
+    condicaoPagamento: varchar("condicao_pagamento", { length: 128 }),
     prazo: timestamp("prazo", { withTimezone: true }),
     status: statusCompraEnum("status").notNull().default("rascunho"),
     nfNumero: varchar("nf_numero", { length: 64 }),

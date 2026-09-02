@@ -7,9 +7,11 @@ import Link from "next/link";
 import {
   STATUS_PEDIDO_LABELS,
   STATUS_PEDIDO_ORDEM,
+  STATUS_COMPRA_LABELS,
   type Pedido,
   type PedidoEvento,
   type Peca,
+  type Compra,
 } from "@/db/schema";
 import { formatBR } from "@/lib/date";
 import { useCurrentUserName } from "@/lib/user";
@@ -73,6 +75,7 @@ export function PedidoDetalheDialog({
     pedido: Pedido;
     eventos: PedidoEvento[];
     peca: Peca | null;
+    compras: Compra[];
   }>(`/api/pedidos/${id}`, fetcher, { refreshInterval: 3000 });
   const [comentario, setComentario] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -267,6 +270,65 @@ export function PedidoDetalheDialog({
           ⚠ Este pedido não está vinculado a uma peça do estoque — a baixa
           automática não vai acontecer ao entregar. Considere cadastrar a peça
           no estoque.
+        </div>
+      )}
+
+      {(data.compras ?? []).length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          <div
+            className="font-mono text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Compras vinculadas
+          </div>
+          {(data.compras ?? []).map((cp) => (
+            <Link
+              key={cp.id}
+              href={`/compras/${cp.id}`}
+              className="flex items-center gap-2 rounded-md border p-2 text-sm transition hover:opacity-90"
+              style={{
+                background: "var(--surface-3)",
+                borderColor: "var(--border)",
+              }}
+            >
+              <span
+                className={clsx(
+                  "chip",
+                  cp.status === "recebida"
+                    ? "chip-brand"
+                    : cp.status === "cancelada"
+                    ? "chip-danger"
+                    : cp.status === "comprada"
+                    ? "chip-warning"
+                    : "chip-info"
+                )}
+              >
+                {STATUS_COMPRA_LABELS[cp.status]}
+              </span>
+              <span
+                className="flex-1 truncate"
+                style={{ color: "var(--text)" }}
+              >
+                #{cp.id} · {cp.descricao}
+              </span>
+              {cp.fornecedor && (
+                <span
+                  className="truncate text-xs"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {cp.fornecedor}
+                </span>
+              )}
+              {cp.valorTotal && (
+                <span
+                  className="font-mono text-xs font-bold"
+                  style={{ color: "var(--brand)" }}
+                >
+                  R$ {cp.valorTotal}
+                </span>
+              )}
+            </Link>
+          ))}
         </div>
       )}
 

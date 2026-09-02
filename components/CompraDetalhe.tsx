@@ -39,6 +39,14 @@ export function CompraDetalhe({ id }: { id: number }) {
   const [confirmExcluir, setConfirmExcluir] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  // Modal de avanço com dados obrigatórios (aprovar/comprar)
+  const [avancarPara, setAvancarPara] = useState<Compra["status"] | null>(null);
+  const [aFornecedor, setAFornecedor] = useState("");
+  const [aValorUnit, setAValorUnit] = useState("");
+  const [aCondicao, setACondicao] = useState("");
+  const [avancarErro, setAvancarErro] = useState<string | null>(null);
+  const [avancarCampos, setAvancarCampos] = useState<string[]>([]);
+
   if (!data) {
     return (
       <div className="p-6 text-sm text-oliva-700">Carregando…</div>
@@ -56,6 +64,51 @@ export function CompraDetalhe({ id }: { id: number }) {
     });
     await mutate();
     setSalvando(false);
+  }
+
+  function abrirAvancar(next: "aprovada" | "comprada") {
+    setAvancarPara(next);
+    setAFornecedor(c.fornecedor ?? "");
+    setAValorUnit(c.valorUnit ?? "");
+    setACondicao(c.condicaoPagamento ?? "");
+    setAvancarErro(null);
+    setAvancarCampos([]);
+  }
+
+  async function confirmarAvancar() {
+    if (!avancarPara) return;
+    setSalvando(true);
+    setAvancarErro(null);
+    setAvancarCampos([]);
+    const body: any = { status: avancarPara };
+    if (aFornecedor.trim() && aFornecedor.trim() !== c.fornecedor) {
+      body.fornecedor = aFornecedor.trim();
+    }
+    if (aValorUnit.trim()) {
+      const v = Number(aValorUnit.replace(",", "."));
+      if (!Number.isNaN(v)) body.valorUnit = v;
+    }
+    if (avancarPara === "comprada" && aCondicao.trim()) {
+      body.condicaoPagamento = aCondicao.trim();
+    }
+    const res = await fetch(`/api/compras/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setSalvando(false);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      if (j.error === "dados_pendentes") {
+        setAvancarCampos(j.camposFaltando ?? []);
+        setAvancarErro(j.mensagem ?? "Preencha os campos obrigatórios.");
+      } else {
+        setAvancarErro(j.mensagem ?? j.error ?? "Falha ao avançar.");
+      }
+      return;
+    }
+    setAvancarPara(null);
+    await mutate();
   }
 
   async function receber() {
@@ -163,6 +216,10 @@ export function CompraDetalhe({ id }: { id: number }) {
           value={c.valorTotal ? `R$ ${c.valorTotal}` : "—"}
         />
         <Card
+          label="Condição de pagamento"
+          value={c.condicaoPagamento || "—"}
+        />
+        <Card
           label="Prazo desejado"
           value={c.prazo ? formatBRDia(c.prazo) : "—"}
         />
@@ -233,7 +290,7 @@ export function CompraDetalhe({ id }: { id: number }) {
           <button
             className="btn-primary"
             disabled={salvando}
-            onClick={() => avancar("aprovada")}
+            onClick={() => abrirAvancar("aprovada")}
           >
             ✔ Aprovar
           </button>
@@ -242,7 +299,7 @@ export function CompraDetalhe({ id }: { id: number }) {
           <button
             className="btn-primary"
             disabled={salvando}
-            onClick={() => avancar("comprada")}
+            onClick={() => abrirAvancar("comprada")}
           >
             💳 Marcar como comprada
           </button>
@@ -308,6 +365,148 @@ export function CompraDetalhe({ id }: { id: number }) {
           ))}
         </ul>
       </div>
+
+      {/* Modal de avanço com dados obrigatórios */}
+      {avancarPara && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setAvancarPara(null)}
+        >
+          <div
+            className="card w-full max-w-md p-5"
+            style={{ boxShadow: "var(--shadow-md)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-lg font-bold tracking-tight">
+              {avancarPara === "aprovada"
+                ? "Aprovar solicitação"
+                : "Marcar como comprada"}
+            </h3>
+            <p
+              className="mb-4 text-xs"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {avancarPara === "aprovada"
+                ? "Fornecedor e valor unitário são obrigatórios pra aprovar."
+                : "Confirma a condição de pagamento pra registrar a compra."}
+            </p>
+
+            <label className="label-form">Fornecedor</label>
+            <input
+              className="input-base"
+              value={aFornecedor}
+              onChange={(e) => setAFornecedor(e.target.value)}
+              placeholder="Nome do fornecedor"
+              maxLength={128}
+              style={
+                avancarCampos.includes("fornecedor")
+                  ? { borderColor: "var(--danger)" }
+                  : undefined
+              }
+            />
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="label-form">Valor unitário (R$)</label>
+                <input
+                  className="input-base"
+                  inputMode="decimal"
+                  value={aValorUnit}
+                  onChange={(e) => setAValorUnit(e.target.value)}
+                  placeholder="Ex: 89,90"
+                  style={
+                    avancarCampos.includes("valorUnit")
+                      ? { borderColor: "var(--danger)" }
+                      : undefined
+                  }
+                />
+              </div>
+              <div>
+                <label className="label-form">Total (auto)</label>
+                <input
+                  className="input-base font-mono"
+                  disabled
+                  value={
+                    aValorUnit && !Number.isNaN(Number(aValorUnit.replace(",", ".")))
+                      ? `R$ ${(
+                          Number(aValorUnit.replace(",", ".")) * c.quantidade
+                        ).toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                        })}`
+                      : "—"
+                  }
+                />
+              </div>
+            </div>
+
+            {avancarPara === "comprada" && (
+              <div className="mt-3">
+                <label className="label-form">Condição de pagamento *</label>
+                <input
+                  className="input-base"
+                  list="cond-pagamento-avancar"
+                  value={aCondicao}
+                  onChange={(e) => setACondicao(e.target.value)}
+                  placeholder="Ex: À vista, 30 dias, PIX"
+                  maxLength={128}
+                  style={
+                    avancarCampos.includes("condicaoPagamento")
+                      ? { borderColor: "var(--danger)" }
+                      : undefined
+                  }
+                />
+                <datalist id="cond-pagamento-avancar">
+                  <option value="À vista" />
+                  <option value="7 dias" />
+                  <option value="15 dias" />
+                  <option value="30 dias" />
+                  <option value="30/60" />
+                  <option value="30/60/90" />
+                  <option value="Boleto" />
+                  <option value="PIX" />
+                  <option value="Cartão CNPJ" />
+                  <option value="Faturado" />
+                </datalist>
+              </div>
+            )}
+
+            {avancarErro && (
+              <div
+                className="mt-3 rounded-md border p-2 text-sm"
+                style={{
+                  borderColor: "var(--danger-border)",
+                  background: "var(--danger-soft)",
+                  color: "var(--danger)",
+                }}
+              >
+                {avancarErro}
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                className="btn-secondary"
+                onClick={() => setAvancarPara(null)}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn-primary"
+                disabled={salvando}
+                onClick={confirmarAvancar}
+              >
+                {salvando
+                  ? "Salvando…"
+                  : avancarPara === "aprovada"
+                  ? "Aprovar"
+                  : "Confirmar compra"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmCancelar && (
         <ConfirmDialog

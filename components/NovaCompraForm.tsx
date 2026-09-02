@@ -33,6 +33,7 @@ export function NovaCompraForm({
   const [unidade, setUnidade] = useState("un");
   const [fornecedor, setFornecedor] = useState("");
   const [valorUnit, setValorUnit] = useState<string>("");
+  const [condicaoPagamento, setCondicaoPagamento] = useState("");
   const [prazo, setPrazo] = useState<string>("");
   const [observacoes, setObservacoes] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -88,6 +89,7 @@ export function NovaCompraForm({
           unidade: peca ? peca.unidade : unidade,
           fornecedor: fornecedor || null,
           valorUnit: valorUnit ? Number(valorUnit) : null,
+          condicaoPagamento: condicaoPagamento.trim() || null,
           prazo: prazo || null,
           observacoes: observacoes || null,
         }),
@@ -241,6 +243,33 @@ export function NovaCompraForm({
               disabled
             />
           </div>
+        </div>
+
+        <div>
+          <label className="label-form">Condição de pagamento</label>
+          <input
+            className="input-base"
+            list="cond-pagamento-sugestoes"
+            value={condicaoPagamento}
+            onChange={(e) => setCondicaoPagamento(e.target.value)}
+            placeholder="Ex: À vista, 30 dias, PIX, Boleto"
+            maxLength={128}
+          />
+          <datalist id="cond-pagamento-sugestoes">
+            <option value="À vista" />
+            <option value="7 dias" />
+            <option value="15 dias" />
+            <option value="30 dias" />
+            <option value="30/60" />
+            <option value="30/60/90" />
+            <option value="Boleto" />
+            <option value="PIX" />
+            <option value="Cartão CNPJ" />
+            <option value="Faturado" />
+          </datalist>
+          <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
+            Obrigatório antes de marcar como "Comprada".
+          </p>
         </div>
 
         <div>

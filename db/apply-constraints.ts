@@ -91,6 +91,13 @@ async function main() {
     ON notificacoes (destinatario, lida);
   `);
 
+  // Ciclo comercial: condicao_pagamento em compras
+  console.log("[constraints] Adicionando compras.condicao_pagamento (se faltar)…");
+  await db.execute(sql`
+    ALTER TABLE compras
+    ADD COLUMN IF NOT EXISTS condicao_pagamento varchar(128);
+  `);
+
   console.log("[constraints] ✓ Concluído.");
   process.exit(0);
 }

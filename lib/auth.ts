@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@/db/client";
 import { usuarios, type Usuario } from "@/db/schema";
@@ -71,10 +71,12 @@ export async function autenticar(
   nome: string,
   senha: string
 ): Promise<Usuario | null> {
+  const nomeNormalizado = nome.trim().toLowerCase();
+  // Case-insensitive: "Matheus" == "matheus" == "MATHEUS"
   const [u] = await db
     .select()
     .from(usuarios)
-    .where(eq(usuarios.nome, nome.trim()));
+    .where(sql`lower(${usuarios.nome}) = ${nomeNormalizado}`);
   if (!u || u.ativo !== 1) return null;
   const ok = await bcrypt.compare(senha, u.senhaHash);
   return ok ? u : null;
