@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MOTIVOS_PEDIDO, type Peca } from "@/db/schema";
 import { PecaAutocomplete } from "./PecaAutocomplete";
+import { FrotaAutocomplete } from "./FrotaAutocomplete";
 import { useCurrentUserName } from "@/lib/user";
 import { useSession } from "./SessionProvider";
 import { FileInput } from "./FileInput";
@@ -151,12 +152,25 @@ export function NovoPedidoDialog({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label-form">Frota / Equipamento</label>
-            <input
-              className="input-base"
+            <FrotaAutocomplete
+              valor={frota}
+              onValor={setFrota}
               required
-              placeholder="Ex: Frota 95, Trator 5508"
-              value={frota}
-              onChange={(e) => setFrota(e.target.value)}
+              placeholder="Nº da frota, modelo ou placa…"
+              onFrota={(f) => {
+                if (!f) return;
+                // Só preenche modelo/ano se ainda estiverem vazios (não sobrescreve)
+                if (!modeloVeiculo && f.modelo) {
+                  setModeloVeiculo(
+                    f.marca && !f.modelo.toUpperCase().startsWith(f.marca.toUpperCase())
+                      ? `${f.marca} ${f.modelo}`
+                      : f.modelo
+                  );
+                }
+                if (!anoVeiculo && f.ano) {
+                  setAnoVeiculo(f.ano);
+                }
+              }}
             />
           </div>
           <div>

@@ -98,6 +98,40 @@ async function main() {
     ADD COLUMN IF NOT EXISTS condicao_pagamento varchar(128);
   `);
 
+  // Frotas cadastradas (importadas da planilha da GRISOMAQ)
+  console.log("[constraints] Criando enum e tabela frotas (se faltar)…");
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'categoria_frota') THEN
+        CREATE TYPE categoria_frota AS ENUM ('equipamento','implemento');
+      END IF;
+    END $$;
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS frotas (
+      id SERIAL PRIMARY KEY,
+      numero varchar(32) NOT NULL UNIQUE,
+      categoria categoria_frota NOT NULL DEFAULT 'equipamento',
+      modelo varchar(128),
+      marca varchar(64),
+      descricao varchar(128),
+      ano varchar(8),
+      placa varchar(16),
+      chassi varchar(32),
+      localizacao varchar(64),
+      proprietario varchar(128),
+      ativo integer NOT NULL DEFAULT 1,
+      observacoes text,
+      criado_em timestamp with time zone NOT NULL DEFAULT now()
+    );
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS frotas_numero_idx ON frotas (numero);
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS frotas_modelo_idx ON frotas (modelo);
+  `);
+
   console.log("[constraints] ✓ Concluído.");
   process.exit(0);
 }

@@ -12,6 +12,11 @@ import {
 
 export const roleEnum = pgEnum("role", ["admin", "funcionario"]);
 
+export const categoriaFrotaEnum = pgEnum("categoria_frota", [
+  "equipamento",
+  "implemento",
+]);
+
 export const prioridadeEnum = pgEnum("prioridade", ["normal", "urgente"]);
 
 export const statusPedidoEnum = pgEnum("status_pedido", [
@@ -47,6 +52,32 @@ export const usuarios = pgTable("usuarios", {
     .defaultNow()
     .notNull(),
 });
+
+export const frotas = pgTable(
+  "frotas",
+  {
+    id: serial("id").primaryKey(),
+    numero: varchar("numero", { length: 32 }).notNull().unique(),
+    categoria: categoriaFrotaEnum("categoria").notNull().default("equipamento"),
+    modelo: varchar("modelo", { length: 128 }),
+    marca: varchar("marca", { length: 64 }),
+    descricao: varchar("descricao", { length: 128 }),
+    ano: varchar("ano", { length: 8 }),
+    placa: varchar("placa", { length: 16 }),
+    chassi: varchar("chassi", { length: 32 }),
+    localizacao: varchar("localizacao", { length: 64 }),
+    proprietario: varchar("proprietario", { length: 128 }),
+    ativo: integer("ativo").notNull().default(1),
+    observacoes: text("observacoes"),
+    criadoEm: timestamp("criado_em", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    numeroIdx: index("frotas_numero_idx").on(t.numero),
+    modeloIdx: index("frotas_modelo_idx").on(t.modelo),
+  })
+);
 
 export const pecas = pgTable(
   "pecas",
@@ -220,6 +251,9 @@ export const movimentacoes = pgTable(
 
 export type Usuario = typeof usuarios.$inferSelect;
 export type NovoUsuario = typeof usuarios.$inferInsert;
+
+export type Frota = typeof frotas.$inferSelect;
+export type NovaFrota = typeof frotas.$inferInsert;
 
 export type Peca = typeof pecas.$inferSelect;
 export type NovaPeca = typeof pecas.$inferInsert;

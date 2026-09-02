@@ -25,5 +25,15 @@ if ! npx --no-install tsx db/seed.ts; then
   echo "[grisomaq] seed falhou."
 fi
 
+# 5. Seed frotas (idempotente, importa 266 registros da GRISOMAQ)
+if [ -f db/seed-frotas.json ]; then
+  echo "[grisomaq] Rodando seed-frotas idempotente…"
+  if ! npx --no-install tsx db/seed-frotas.ts; then
+    echo "[grisomaq] seed-frotas falhou."
+  fi
+else
+  echo "[grisomaq] db/seed-frotas.json não encontrado, pulei."
+fi
+
 echo "[grisomaq] Subindo Next.js…"
 exec "$@"
