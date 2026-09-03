@@ -8,8 +8,18 @@ const SECRET = new TextEncoder().encode(
 
 const ROTAS_PUBLICAS = ["/login", "/api/auth/login"];
 
+function garantirRequestId(req: NextRequest): string {
+  const existente = req.headers.get("x-request-id");
+  if (existente && existente.length >= 8 && existente.length <= 40) {
+    return existente;
+  }
+  // uuid v4 sem hifens (32 chars) — cabe no varchar(40) do audit_log
+  return crypto.randomUUID();
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const requestId = garantirRequestId(req);
 
   if (
     pathname.startsWith("/_next") ||
@@ -62,7 +72,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  // Propaga x-request-id pra rotas (usado pelo audit_log)
+  const headers = new Headers(req.headers);
+  headers.set("x-request-id", requestId);
+  const res = NextResponse.next({ request: { headers } });
+  res.headers.set("x-request-id", requestId);
+  return res;
 }
 
 export const config = {

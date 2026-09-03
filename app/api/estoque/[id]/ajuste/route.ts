@@ -4,6 +4,8 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pecas, movimentacoes } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
+import type { AuditAcao } from "@/lib/audit-acoes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +59,21 @@ export async function POST(
       motivo: motivo ?? null,
       autor,
     });
+  });
+
+  const mapa: Record<string, AuditAcao> = {
+    entrada: "peca_ajuste_entrada",
+    saida: "peca_ajuste_saida",
+    ajuste: "peca_ajuste_direto",
+  };
+  await auditar({
+    req,
+    sessao: admin.sessao,
+    acao: mapa[tipo],
+    entidade: "peca",
+    entidadeId: pecaId,
+    resumo: `Ajuste ${tipo} — ${quantidade} un (motivo: ${motivo ?? "—"}).`,
+    diff: { tipo, quantidade, motivo: motivo ?? null },
   });
 
   return NextResponse.json({ ok: true });

@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
-import { and, desc, gte, lte } from "drizzle-orm";
+import { and, desc, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pedidos, STATUS_PEDIDO_LABELS } from "@/db/schema";
 import { toCSV } from "@/lib/csv";
 import { formatBR } from "@/lib/date";
 import { exigirSessaoApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,14 +18,14 @@ export async function GET(req: NextRequest) {
   const de = url.searchParams.get("de"); // YYYY-MM-DD
   const ate = url.searchParams.get("ate");
 
-  const conds: any[] = [];
+  const conds: any[] = [isNull(pedidos.deletadoEm)];
   if (de) conds.push(gte(pedidos.criadoEm, new Date(`${de}T00:00:00`)));
   if (ate) conds.push(lte(pedidos.criadoEm, new Date(`${ate}T23:59:59`)));
 
   const rows = await db
     .select()
     .from(pedidos)
-    .where(conds.length ? and(...conds) : undefined)
+    .where(and(...conds))
     .orderBy(desc(pedidos.criadoEm));
   const csv = toCSV(
     rows.map((r) => ({
@@ -48,6 +49,17 @@ export async function GET(req: NextRequest) {
       Observacoes: r.observacoes ?? "",
     }))
   );
+  await auditar({
+    req,
+    sessao: auth.sessao,
+    acao: "export_csv",
+    entidade: "export",
+    resumo: `Export CSV de pedidos: ${rows.length} linhas${
+      de || ate ? ` (${de ?? "…"} → ${ate ?? "hoje"})` : ""
+    }.`,
+    diff: { linhas: rows.length, de, ate },
+  });
+
   const sufixo = de || ate ? `-${de ?? "inicio"}-${ate ?? "hoje"}` : "";
   return new Response(csv, {
     headers: {

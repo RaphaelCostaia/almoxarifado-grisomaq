@@ -14,6 +14,8 @@ import {
 } from "@/db/schema";
 import { exigirAdminApi, exigirSessaoApi } from "@/lib/api-auth";
 import { criarNotificacao } from "@/lib/notificar";
+import { auditar } from "@/lib/auditar";
+import type { AuditAcao } from "@/lib/audit-acoes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -114,6 +116,15 @@ export async function DELETE(
     .update(compras)
     .set({ deletadoEm: new Date(), deletadoPor: admin.sessao.nome })
     .where(eq(compras.id, id));
+  await auditar({
+    req,
+    sessao: admin.sessao,
+    acao: "compra_soft_delete",
+    entidade: "compra",
+    entidadeId: id,
+    resumo: `Compra #${id} excluída${forcar ? " (forçado)" : ""}.`,
+    diff: { antes: c, forcado: forcar },
+  });
   return NextResponse.json({ ok: true, forcado: forcar });
 }
 
@@ -328,5 +339,42 @@ export async function PATCH(
   }
 
   const [novo] = await db.select().from(compras).where(eq(compras.id, id));
+
+  // Auditoria — se mudou status, evento específico; caso contrário, editar
+  if (dados.status && dados.status !== atual.status) {
+    const mapa: Record<string, AuditAcao> = {
+      aprovada: "compra_aprovar",
+      comprada: "compra_marcar_comprada",
+      recebida: "compra_receber",
+      cancelada: "compra_cancelar",
+    };
+    const acao: AuditAcao = mapa[dados.status] ?? "compra_editar";
+    await auditar({
+      req,
+      sessao: admin.sessao,
+      acao,
+      entidade: "compra",
+      entidadeId: id,
+      resumo: `Compra #${id}: ${atual.status} → ${dados.status}.`,
+      diff: {
+        statusAntes: atual.status,
+        statusDepois: dados.status,
+        fornecedor: fornecedorEfetivo,
+        valorTotal: novo?.valorTotal,
+      },
+    });
+  } else if (Object.keys(update).length > 1) {
+    // > 1 porque atualizadoEm sempre está no update
+    await auditar({
+      req,
+      sessao: admin.sessao,
+      acao: "compra_editar",
+      entidade: "compra",
+      entidadeId: id,
+      resumo: `Compra #${id} editada.`,
+      diff: { alterados: Object.keys(update).filter((k) => k !== "atualizadoEm") },
+    });
+  }
+
   return NextResponse.json({ compra: novo });
 }

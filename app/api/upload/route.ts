@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { exigirSessaoApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,6 +48,20 @@ export async function POST(req: NextRequest) {
   const nome = `${Date.now()}-${randomBytes(6).toString("hex")}.${ext}`;
   const buf = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(UPLOAD_DIR, nome), buf);
+
+  await auditar({
+    req,
+    sessao: auth.sessao,
+    acao: "arquivo_upload",
+    entidade: "arquivo",
+    resumo: `Upload: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`,
+    diff: {
+      nomeOriginal: file.name,
+      nomeSalvo: nome,
+      mime: file.type,
+      tamanhoBytes: file.size,
+    },
+  });
 
   return NextResponse.json({ url: `${PUBLIC_BASE}/${nome}` });
 }

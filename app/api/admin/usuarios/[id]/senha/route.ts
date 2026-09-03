@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { usuarios } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
 import { hashSenha } from "@/lib/auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,17 @@ export async function POST(
   if (!parsed.success) {
     return NextResponse.json({ error: "dados_invalidos" }, { status: 400 });
   }
+  const [alvo] = await db.select({ nome: usuarios.nome }).from(usuarios).where(eq(usuarios.id, id));
   const hash = await hashSenha(parsed.data.senha);
   await db.update(usuarios).set({ senhaHash: hash }).where(eq(usuarios.id, id));
+  await auditar({
+    req,
+    sessao: auth.sessao,
+    acao: "usuario_reset_senha",
+    entidade: "usuario",
+    entidadeId: id,
+    resumo: `Senha resetada: ${alvo?.nome ?? id}.`,
+    // Importante: nunca gravar a senha nova nem o hash no diff.
+  });
   return NextResponse.json({ ok: true });
 }

@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { pedidoEventos, pedidos } from "@/db/schema";
 import { exigirSessaoApi } from "@/lib/api-auth";
 import { criarNotificacao } from "@/lib/notificar";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,6 +49,16 @@ export async function POST(
       texto: `Nova observação em seu pedido #${pedido.id}: "${parsed.data.texto.slice(0, 120)}"`,
     });
   }
+
+  await auditar({
+    req,
+    sessao: auth.sessao,
+    acao: "pedido_comentar",
+    entidade: "pedido",
+    entidadeId: id,
+    resumo: `Comentário em #${id}: ${parsed.data.texto.slice(0, 100)}`,
+    diff: { texto: parsed.data.texto },
+  });
 
   return NextResponse.json({ evento: ev }, { status: 201 });
 }

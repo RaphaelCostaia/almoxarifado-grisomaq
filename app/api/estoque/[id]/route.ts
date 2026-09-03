@@ -3,12 +3,13 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pecas, pedidos } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const admin = await exigirAdminApi();
@@ -17,6 +18,7 @@ export async function DELETE(
   if (!Number.isFinite(id)) {
     return NextResponse.json({ error: "id_invalido" }, { status: 400 });
   }
+  const [antes] = await db.select().from(pecas).where(eq(pecas.id, id));
 
   // Bloqueia se houver pedidos EM ANDAMENTO vinculados
   const [pedidoAtivo] = await db
@@ -45,5 +47,14 @@ export async function DELETE(
     .update(pecas)
     .set({ deletadoEm: new Date(), deletadoPor: admin.sessao.nome })
     .where(eq(pecas.id, id));
+  await auditar({
+    req,
+    sessao: admin.sessao,
+    acao: "peca_soft_delete",
+    entidade: "peca",
+    entidadeId: id,
+    resumo: `Peça excluída: ${antes?.nome ?? id}.`,
+    diff: { antes: antes ?? null },
+  });
   return NextResponse.json({ ok: true });
 }

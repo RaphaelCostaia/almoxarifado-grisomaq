@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { compras, compraEventos, pecas, pedidoEventos, pedidos } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
 import { sessaoAtual } from "@/lib/auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -152,6 +153,24 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  await auditar({
+    req,
+    sessao: admin.sessao,
+    acao: "compra_criar",
+    entidade: "compra",
+    entidadeId: compra.id,
+    resumo: `Solicitação de compra #${compra.id} criada (${compra.quantidade} ${compra.unidade}).`,
+    diff: {
+      pedidoId: compra.pedidoId,
+      pecaId: compra.pecaId,
+      descricao: compra.descricao,
+      quantidade: compra.quantidade,
+      fornecedor: compra.fornecedor,
+      valorUnit: compra.valorUnit,
+      valorTotal: compra.valorTotal,
+    },
+  });
 
   return NextResponse.json({ compra }, { status: 201 });
 }

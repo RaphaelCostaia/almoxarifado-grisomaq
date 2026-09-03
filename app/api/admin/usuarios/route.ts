@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { usuarios } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
 import { hashSenha } from "@/lib/auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,6 +73,15 @@ export async function POST(req: NextRequest) {
         role: usuarios.role,
         ativo: usuarios.ativo,
       });
+    await auditar({
+      req,
+      sessao: auth.sessao,
+      acao: "usuario_criar",
+      entidade: "usuario",
+      entidadeId: u.id,
+      resumo: `Usuário criado: ${u.nome} (${u.role}).`,
+      diff: { nome: u.nome, role: u.role },
+    });
     return NextResponse.json({ usuario: u }, { status: 201 });
   } catch (e: any) {
     const codigoErro = e?.code ?? e?.cause?.code;

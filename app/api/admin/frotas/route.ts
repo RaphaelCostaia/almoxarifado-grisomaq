@@ -4,6 +4,7 @@ import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { frotas } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,5 +103,14 @@ export async function POST(req: NextRequest) {
       ativo: typeof d.ativo === "boolean" ? (d.ativo ? 1 : 0) : d.ativo,
     })
     .returning();
+  await auditar({
+    req,
+    sessao: auth.sessao,
+    acao: "frota_criar",
+    entidade: "frota",
+    entidadeId: f.id,
+    resumo: `Frota ${f.numero} cadastrada (${f.categoria}).`,
+    diff: { numero: f.numero, categoria: f.categoria, modelo: f.modelo, marca: f.marca },
+  });
   return NextResponse.json({ frota: f }, { status: 201 });
 }

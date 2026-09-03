@@ -4,6 +4,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { frotas, pedidos } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,13 +60,23 @@ export async function PATCH(
   const update: any = { ...d };
   if (typeof d.ativo === "boolean") update.ativo = d.ativo ? 1 : 0;
 
+  const [antes] = await db.select().from(frotas).where(eq(frotas.id, id));
   await db.update(frotas).set(update).where(eq(frotas.id, id));
   const [novo] = await db.select().from(frotas).where(eq(frotas.id, id));
+  await auditar({
+    req,
+    sessao: auth.sessao,
+    acao: "frota_editar",
+    entidade: "frota",
+    entidadeId: id,
+    resumo: `Frota ${antes?.numero ?? id} editada.`,
+    diff: { antes, depois: novo },
+  });
   return NextResponse.json({ frota: novo });
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const auth = await exigirAdminApi();
@@ -96,5 +107,14 @@ export async function DELETE(
     .update(frotas)
     .set({ deletadoEm: new Date(), deletadoPor: auth.sessao.nome })
     .where(eq(frotas.id, id));
+  await auditar({
+    req,
+    sessao: auth.sessao,
+    acao: "frota_soft_delete",
+    entidade: "frota",
+    entidadeId: id,
+    resumo: `Frota ${f.numero} excluída.`,
+    diff: { antes: f },
+  });
   return NextResponse.json({ ok: true });
 }

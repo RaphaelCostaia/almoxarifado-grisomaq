@@ -4,6 +4,7 @@ import { and, asc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pecas } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -107,6 +108,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const [p] = await db.insert(pecas).values(dados).returning();
+    await auditar({
+      req,
+      sessao: admin.sessao,
+      acao: "peca_criar",
+      entidade: "peca",
+      entidadeId: p.id,
+      resumo: `Peça cadastrada: ${p.nome}${p.codigo ? ` (${p.codigo})` : ""}.`,
+      diff: {
+        codigo: p.codigo,
+        nome: p.nome,
+        unidade: p.unidade,
+        saldo: p.saldo,
+        familia: p.familia,
+      },
+    });
     return NextResponse.json({ peca: p }, { status: 201 });
   } catch (e: any) {
     const codigoErro = e?.code ?? e?.cause?.code;

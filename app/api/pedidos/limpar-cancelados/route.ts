@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { exigirAdminApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const admin = await exigirAdminApi();
   if (!admin.ok) return admin.res;
 
@@ -23,5 +24,15 @@ export async function POST() {
     SELECT COUNT(*)::int AS n FROM mudados
   `);
   const n = Number((rem as any[])[0]?.n ?? 0);
+  if (n > 0) {
+    await auditar({
+      req,
+      sessao: admin.sessao,
+      acao: "pedidos_purge_cancelados",
+      entidade: "pedido",
+      resumo: `Expurgo em lote: ${n} pedido(s) cancelado(s) marcado(s) como excluído(s).`,
+      diff: { total: n },
+    });
+  }
   return NextResponse.json({ ok: true, apagados: n });
 }

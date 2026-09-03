@@ -13,6 +13,7 @@ import {
 import { desc } from "drizzle-orm";
 import { exigirAdminApi, exigirSessaoApi } from "@/lib/api-auth";
 import { criarNotificacao } from "@/lib/notificar";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,7 +94,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const admin = await exigirAdminApi();
@@ -109,11 +110,19 @@ export async function DELETE(
   if (!p) {
     return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
   }
-  // Soft delete — preserva pedido_eventos e a linha auditável
   await db
     .update(pedidos)
     .set({ deletadoEm: new Date(), deletadoPor: admin.sessao.nome })
     .where(eq(pedidos.id, id));
+  await auditar({
+    req,
+    sessao: admin.sessao,
+    acao: "pedido_soft_delete",
+    entidade: "pedido",
+    entidadeId: id,
+    resumo: `Pedido #${id} excluído (${p.frota} — ${p.descricao.slice(0, 60)}).`,
+    diff: { antes: p },
+  });
   return NextResponse.json({ ok: true });
 }
 
@@ -248,5 +257,48 @@ export async function PATCH(
     .from(pedidos)
     .where(eq(pedidos.id, id))
     .limit(1);
+
+  // Auditoria: status muda separado, edição pura separado
+  if (status && status !== atual.status) {
+    await auditar({
+      req,
+      sessao: auth.sessao,
+      acao: "pedido_status",
+      entidade: "pedido",
+      entidadeId: id,
+      resumo: `Pedido #${id} — status ${atual.status} → ${status}.`,
+      diff: { statusAntes: atual.status, statusDepois: status },
+    });
+  } else if (
+    prioridade !== undefined ||
+    observacoes !== undefined
+  ) {
+    await auditar({
+      req,
+      sessao: auth.sessao,
+      acao: "pedido_editar",
+      entidade: "pedido",
+      entidadeId: id,
+      resumo: `Pedido #${id} editado.`,
+      diff: {
+        prioridadeAntes: atual.prioridade,
+        prioridadeDepois: prioridade,
+        observacoesAntes: atual.observacoes,
+        observacoesDepois: observacoes,
+      },
+    });
+  }
+  if (comentario && comentario.trim().length > 0) {
+    await auditar({
+      req,
+      sessao: auth.sessao,
+      acao: "pedido_comentar",
+      entidade: "pedido",
+      entidadeId: id,
+      resumo: `Comentário em #${id}: ${comentario.slice(0, 100)}`,
+      diff: { texto: comentario },
+    });
+  }
+
   return NextResponse.json({ pedido: novo });
 }

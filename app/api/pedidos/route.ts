@@ -4,6 +4,7 @@ import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pedidos, pedidoEventos, pecas } from "@/db/schema";
 import { exigirSessaoApi } from "@/lib/api-auth";
+import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -140,6 +141,24 @@ export async function POST(req: NextRequest) {
     texto: pecaNome
       ? `Pedido registrado. Peça vinculada ao estoque: ${pecaNome}.`
       : "Pedido registrado.",
+  });
+
+  await auditar({
+    req,
+    sessao: auth.sessao,
+    acao: "pedido_criar",
+    entidade: "pedido",
+    entidadeId: pedido.id,
+    resumo: `Pedido #${pedido.id} criado (${dados.frota} — ${dados.quantidade} ${dados.unidade}).`,
+    diff: {
+      frota: pedido.frota,
+      descricao: pedido.descricao,
+      quantidade: pedido.quantidade,
+      unidade: pedido.unidade,
+      prioridade: pedido.prioridade,
+      pecaId: pedido.pecaId,
+      motivo: pedido.motivo,
+    },
   });
 
   return NextResponse.json({ pedido }, { status: 201 });
