@@ -157,6 +157,52 @@ async function main() {
     CREATE INDEX IF NOT EXISTS frotas_modelo_idx ON frotas (modelo);
   `);
 
+  // Trilha de auditoria imutável (hash-chain)
+  console.log("[constraints] Criando tabela audit_log (se faltar)…");
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      ts timestamp with time zone NOT NULL DEFAULT now(),
+      ator_uid integer,
+      ator_nome varchar(64),
+      ator_role varchar(16),
+      ip varchar(64),
+      user_agent varchar(512),
+      acao varchar(64) NOT NULL,
+      entidade varchar(32),
+      entidade_id integer,
+      resumo varchar(255) NOT NULL,
+      diff jsonb,
+      request_id varchar(40),
+      hash_prev varchar(64) NOT NULL,
+      hash_curr varchar(64) NOT NULL
+    );
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS audit_log_ts_idx  ON audit_log (ts);`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS audit_log_ator_idx ON audit_log (ator_uid);`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS audit_log_ent_idx  ON audit_log (entidade, entidade_id);`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS audit_log_acao_idx ON audit_log (acao);`);
+
+  // Soft delete em pedidos, compras, pecas, frotas, usuarios
+  console.log("[constraints] Adicionando colunas de soft delete…");
+  for (const tabela of ["pedidos", "compras", "pecas", "frotas", "usuarios"]) {
+    await db.execute(
+      sql.raw(
+        `ALTER TABLE ${tabela} ADD COLUMN IF NOT EXISTS deletado_em timestamp with time zone;`
+      )
+    );
+    await db.execute(
+      sql.raw(
+        `ALTER TABLE ${tabela} ADD COLUMN IF NOT EXISTS deletado_por varchar(64);`
+      )
+    );
+    await db.execute(
+      sql.raw(
+        `CREATE INDEX IF NOT EXISTS ${tabela}_deletado_idx ON ${tabela} (deletado_em);`
+      )
+    );
+  }
+
   console.log("[constraints] ✓ Concluído.");
   process.exit(0);
 }

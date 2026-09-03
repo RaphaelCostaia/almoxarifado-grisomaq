@@ -1,12 +1,14 @@
 import {
   pgTable,
   serial,
+  bigserial,
   varchar,
   text,
   integer,
   timestamp,
   pgEnum,
   numeric,
+  jsonb,
   index,
 } from "drizzle-orm/pg-core";
 
@@ -51,6 +53,8 @@ export const usuarios = pgTable("usuarios", {
   criadoEm: timestamp("criado_em", { withTimezone: true })
     .defaultNow()
     .notNull(),
+  deletadoEm: timestamp("deletado_em", { withTimezone: true }),
+  deletadoPor: varchar("deletado_por", { length: 64 }),
 });
 
 export const frotas = pgTable(
@@ -72,6 +76,8 @@ export const frotas = pgTable(
     criadoEm: timestamp("criado_em", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    deletadoEm: timestamp("deletado_em", { withTimezone: true }),
+    deletadoPor: varchar("deletado_por", { length: 64 }),
   },
   (t) => ({
     numeroIdx: index("frotas_numero_idx").on(t.numero),
@@ -102,6 +108,8 @@ export const pecas = pgTable(
     criadoEm: timestamp("criado_em", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    deletadoEm: timestamp("deletado_em", { withTimezone: true }),
+    deletadoPor: varchar("deletado_por", { length: 64 }),
   },
   (t) => ({
     nomeIdx: index("pecas_nome_idx").on(t.nome),
@@ -139,6 +147,8 @@ export const pedidos = pgTable(
       .defaultNow()
       .notNull(),
     entregueEm: timestamp("entregue_em", { withTimezone: true }),
+    deletadoEm: timestamp("deletado_em", { withTimezone: true }),
+    deletadoPor: varchar("deletado_por", { length: 64 }),
   },
   (t) => ({
     statusIdx: index("pedidos_status_idx").on(t.status),
@@ -213,6 +223,8 @@ export const compras = pgTable(
     atualizadoEm: timestamp("atualizado_em", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    deletadoEm: timestamp("deletado_em", { withTimezone: true }),
+    deletadoPor: varchar("deletado_por", { length: 64 }),
   },
   (t) => ({
     statusIdx: index("compras_status_idx").on(t.status),
@@ -259,6 +271,36 @@ export const movimentacoes = pgTable(
     pecaIdx: index("movimentacoes_peca_idx").on(t.pecaId),
   })
 );
+
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    ts: timestamp("ts", { withTimezone: true }).defaultNow().notNull(),
+    atorUid: integer("ator_uid"),
+    atorNome: varchar("ator_nome", { length: 64 }),
+    atorRole: varchar("ator_role", { length: 16 }),
+    ip: varchar("ip", { length: 64 }),
+    userAgent: varchar("user_agent", { length: 512 }),
+    acao: varchar("acao", { length: 64 }).notNull(),
+    entidade: varchar("entidade", { length: 32 }),
+    entidadeId: integer("entidade_id"),
+    resumo: varchar("resumo", { length: 255 }).notNull(),
+    diff: jsonb("diff"),
+    requestId: varchar("request_id", { length: 40 }),
+    hashPrev: varchar("hash_prev", { length: 64 }).notNull(),
+    hashCurr: varchar("hash_curr", { length: 64 }).notNull(),
+  },
+  (t) => ({
+    tsIdx: index("audit_log_ts_idx").on(t.ts),
+    atorIdx: index("audit_log_ator_idx").on(t.atorUid),
+    entIdx: index("audit_log_ent_idx").on(t.entidade, t.entidadeId),
+    acaoIdx: index("audit_log_acao_idx").on(t.acao),
+  })
+);
+
+export type AuditLog = typeof auditLog.$inferSelect;
+export type NovoAuditLog = typeof auditLog.$inferInsert;
 
 export type Usuario = typeof usuarios.$inferSelect;
 export type NovoUsuario = typeof usuarios.$inferInsert;
