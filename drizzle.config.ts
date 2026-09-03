@@ -5,6 +5,7 @@ export default {
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.POSTGRES_URL!,
+    // Prefere URL admin (owner) se definida; scripts de DDL precisam dela.
+    url: (process.env.POSTGRES_URL_ADMIN ?? process.env.POSTGRES_URL)!,
   },
 } satisfies Config;

@@ -1,7 +1,7 @@
 // Roda: `npm run db:cleanup`
 // Remove peças e pedidos duplicados que o seed antigo criou antes das constraints.
 import { sql } from "drizzle-orm";
-import { db } from "./client";
+import { db } from "./client-admin";
 
 async function main() {
   console.log("[cleanup] Removendo peças duplicadas por código…");

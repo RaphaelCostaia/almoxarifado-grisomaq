@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { sql } from "drizzle-orm";
-import { db } from "./client";
+import { db } from "./client-admin";
 import { frotas } from "./schema";
 
 type FrotaJson = {

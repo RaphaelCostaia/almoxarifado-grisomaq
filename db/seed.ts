@@ -2,7 +2,7 @@
 // Seed idempotente — pode rodar N vezes sem duplicar dados.
 import bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
-import { db } from "./client";
+import { db } from "./client-admin";
 import { pecas, pedidos, pedidoEventos, usuarios } from "./schema";
 
 async function main() {

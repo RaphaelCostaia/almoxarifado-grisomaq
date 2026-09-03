@@ -165,3 +165,19 @@ docker-compose.yml   app + Postgres 16 + volumes
 - Ações restritas (mover Kanban, mexer em estoque, mexer em compras, cadastrar usuário) exigem `role=admin`.
 - Uploads acessíveis só por usuário logado (rota `/api/uploads/...` verifica sessão).
 - `AUTH_SECRET` **deve** ser trocado em produção. Se vazar, todos os cookies existentes viram inválidos ao trocar.
+
+## Trilha de auditoria imutável
+
+Toda ação humana no sistema vai pra tabela `audit_log` com **hash-chain SHA-256**: cada linha guarda o hash da anterior, então adulterar qualquer linha antiga quebra a cadeia daí pra frente. A tabela é protegida por trigger Postgres (`audit_log_readonly`) que bloqueia `UPDATE`, `DELETE` e `TRUNCATE` no nível do banco — mesmo o `owner` recebe erro. Deletar dados de negócio (pedidos, compras, peças, frotas, usuários) virou **soft delete** (`deletado_em, deletado_por`): a linha some da UI mas o rastro fica.
+
+Acesso: **Admin → aba Auditoria** (`/admin/auditoria`). Filtros por ator, ação, entidade, período. Botão "🔒 Verificar integridade" percorre toda a cadeia e confirma se algum hash divergiu. Export CSV disponível.
+
+**Segunda camada opcional — role Postgres limitada.** Se quiser proteção extra contra bugs de app, defina `APP_DB_PASSWORD` no `.env`. No próximo boot o entrypoint cria a role `grisomaq_app` sem `DELETE` em audit_log nem nas tabelas de negócio. Você então aponta `POSTGRES_URL` pra ela:
+
+```
+POSTGRES_URL_ADMIN=postgres://grisomaq:$POSTGRES_PASSWORD@db:5432/grisomaq
+POSTGRES_URL=postgres://grisomaq_app:$APP_DB_PASSWORD@db:5432/grisomaq
+APP_DB_PASSWORD=<pelo menos 8 chars, gire periodicamente>
+```
+
+O trigger sozinho já garante imutabilidade; a role adiciona defesa em profundidade.

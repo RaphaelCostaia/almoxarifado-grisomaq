@@ -1,7 +1,7 @@
 // Aplica constraints/índices/colunas via SQL puro, evitando prompts interativos
 // do drizzle-kit. Rodar antes do `drizzle-kit push` no entrypoint.
 import { sql } from "drizzle-orm";
-import { db } from "./client";
+import { db } from "./client-admin";
 
 async function main() {
   console.log("[constraints] Aplicando UNIQUE em pecas.codigo e pecas.nome…");
@@ -182,6 +182,63 @@ async function main() {
   await db.execute(sql`CREATE INDEX IF NOT EXISTS audit_log_ator_idx ON audit_log (ator_uid);`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS audit_log_ent_idx  ON audit_log (entidade, entidade_id);`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS audit_log_acao_idx ON audit_log (acao);`);
+
+  // Imutabilidade no NÍVEL DO BANCO: trigger que bloqueia UPDATE e DELETE em audit_log,
+  // independente da role/permissão. O owner (grisomaq) pode dar DROP TRIGGER pra
+  // manutenção, mas isso quebra a hash-chain e é detectável.
+  console.log("[constraints] Instalando trigger de imutabilidade em audit_log…");
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION audit_log_readonly() RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'audit_log é append-only: % em %', TG_OP, TG_TABLE_NAME
+        USING ERRCODE = 'insufficient_privilege';
+    END;
+    $$ LANGUAGE plpgsql;
+  `);
+  await db.execute(sql`DROP TRIGGER IF EXISTS audit_log_no_update ON audit_log;`);
+  await db.execute(sql`
+    CREATE TRIGGER audit_log_no_update
+      BEFORE UPDATE ON audit_log
+      FOR EACH ROW EXECUTE FUNCTION audit_log_readonly();
+  `);
+  await db.execute(sql`DROP TRIGGER IF EXISTS audit_log_no_delete ON audit_log;`);
+  await db.execute(sql`
+    CREATE TRIGGER audit_log_no_delete
+      BEFORE DELETE ON audit_log
+      FOR EACH ROW EXECUTE FUNCTION audit_log_readonly();
+  `);
+  await db.execute(sql`DROP TRIGGER IF EXISTS audit_log_no_truncate ON audit_log;`);
+  await db.execute(sql`
+    CREATE TRIGGER audit_log_no_truncate
+      BEFORE TRUNCATE ON audit_log
+      FOR EACH STATEMENT EXECUTE FUNCTION audit_log_readonly();
+  `);
+
+  // Opcional: cria role limitada `grisomaq_app` se APP_DB_PASSWORD for fornecida.
+  // Isso permite ao operador migrar POSTGRES_URL da app pra usar essa role, dando
+  // uma segunda camada de proteção (revoga DELETE geral). Se não fornecida, apenas
+  // pula — a trigger acima já protege audit_log.
+  const appPass = process.env.APP_DB_PASSWORD;
+  if (appPass && appPass.length >= 8) {
+    console.log("[constraints] Configurando role grisomaq_app (APP_DB_PASSWORD definida)…");
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='grisomaq_app') THEN
+          EXECUTE format('CREATE ROLE grisomaq_app LOGIN PASSWORD %L', ${appPass});
+        ELSE
+          EXECUTE format('ALTER ROLE grisomaq_app WITH LOGIN PASSWORD %L', ${appPass});
+        END IF;
+      END $$;
+    `);
+    await db.execute(sql`GRANT USAGE ON SCHEMA public TO grisomaq_app;`);
+    await db.execute(sql`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO grisomaq_app;`);
+    await db.execute(sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO grisomaq_app;`);
+    // Bloqueio explícito em audit_log — só INSERT
+    await db.execute(sql`REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM grisomaq_app;`);
+    // Soft delete: remove DELETE em massa das tabelas de negócio (força usar deletado_em)
+    await db.execute(sql`REVOKE DELETE ON pedidos, compras, pecas, frotas, usuarios FROM grisomaq_app;`);
+  }
 
   // Soft delete em pedidos, compras, pecas, frotas, usuarios
   console.log("[constraints] Adicionando colunas de soft delete…");

@@ -27,7 +27,17 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
+      # Runtime da app. Se definir APP_DB_PASSWORD abaixo, o entrypoint cria a
+      # role limitada `grisomaq_app` e você pode trocar esta URL pra usá-la —
+      # segunda camada de proteção sobre a trigger imutável do audit_log.
       POSTGRES_URL: postgres://grisomaq:${POSTGRES_PASSWORD:-troque_esta_senha}@db:5432/grisomaq
+      # Opcional: URL de owner usada só pelos scripts db/*.ts (migrations, seeds).
+      # Se omitida, fallback para POSTGRES_URL — mantém o comportamento atual.
+      # POSTGRES_URL_ADMIN: postgres://grisomaq:${POSTGRES_PASSWORD}@db:5432/grisomaq
+      # Opcional: se definida (min 8 chars), o apply-constraints cria a role
+      # `grisomaq_app` no primeiro boot. Você então aponta POSTGRES_URL acima
+      # pra ela: postgres://grisomaq_app:$APP_DB_PASSWORD@db:5432/grisomaq
+      # APP_DB_PASSWORD: ${APP_DB_PASSWORD:-}
       AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET no .env}
       ADMIN_SENHA: ${ADMIN_SENHA:-grisomaq123}
       # Roda drizzle push + seed no primeiro start; troque para 0 depois
