@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pecas } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const familia = url.searchParams.get("familia")?.trim();
   const limit = Math.min(500, Number(url.searchParams.get("limit") ?? 200));
 
-  const conds: any[] = [];
+  const conds: any[] = [isNull(pecas.deletadoEm)];
   if (q) {
     conds.push(
       or(
@@ -54,7 +54,8 @@ export async function GET(req: NextRequest) {
       repor: sql<number>`sum(case when saldo <= minimo and saldo > 0 then 1 else 0 end)::int`,
       criticos: sql<number>`sum(case when saldo = 0 then 1 else 0 end)::int`,
     })
-    .from(pecas);
+    .from(pecas)
+    .where(isNull(pecas.deletadoEm));
 
   return NextResponse.json({
     pecas: rows,

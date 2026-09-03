@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { frotas, pedidos } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
@@ -71,7 +71,10 @@ export async function DELETE(
   const auth = await exigirAdminApi();
   if (!auth.ok) return auth.res;
   const id = Number(params.id);
-  const [f] = await db.select().from(frotas).where(eq(frotas.id, id));
+  const [f] = await db
+    .select()
+    .from(frotas)
+    .where(and(eq(frotas.id, id), isNull(frotas.deletadoEm)));
   if (!f) {
     return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
   }
@@ -79,7 +82,7 @@ export async function DELETE(
   const [temPedido] = await db
     .select({ c: sql<number>`count(*)::int` })
     .from(pedidos)
-    .where(eq(pedidos.frota, f.numero));
+    .where(and(eq(pedidos.frota, f.numero), isNull(pedidos.deletadoEm)));
   if ((temPedido?.c ?? 0) > 0) {
     return NextResponse.json(
       {
@@ -89,6 +92,9 @@ export async function DELETE(
       { status: 409 }
     );
   }
-  await db.delete(frotas).where(eq(frotas.id, id));
+  await db
+    .update(frotas)
+    .set({ deletadoEm: new Date(), deletadoPor: auth.sessao.nome })
+    .where(eq(frotas.id, id));
   return NextResponse.json({ ok: true });
 }

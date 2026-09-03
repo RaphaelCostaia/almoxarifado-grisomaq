@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { frotas } from "@/db/schema";
 import { exigirSessaoApi } from "@/lib/api-auth";
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const ativos = url.searchParams.get("ativos") !== "0";
   const limit = Math.min(50, Number(url.searchParams.get("limit") ?? 20));
 
-  const conds: any[] = [];
+  const conds: any[] = [isNull(frotas.deletadoEm)];
   if (ativos) conds.push(eq(frotas.ativo, 1));
   if (q) {
     conds.push(

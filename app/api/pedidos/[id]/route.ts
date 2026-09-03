@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   pedidos,
@@ -44,7 +44,7 @@ export async function GET(
   const pedido = await db
     .select()
     .from(pedidos)
-    .where(eq(pedidos.id, id))
+    .where(and(eq(pedidos.id, id), isNull(pedidos.deletadoEm)))
     .limit(1);
   if (pedido.length === 0) {
     return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
@@ -102,11 +102,18 @@ export async function DELETE(
   if (!Number.isFinite(id)) {
     return NextResponse.json({ error: "id_invalido" }, { status: 400 });
   }
-  const [p] = await db.select().from(pedidos).where(eq(pedidos.id, id));
+  const [p] = await db
+    .select()
+    .from(pedidos)
+    .where(and(eq(pedidos.id, id), isNull(pedidos.deletadoEm)));
   if (!p) {
     return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
   }
-  await db.delete(pedidos).where(eq(pedidos.id, id));
+  // Soft delete — preserva pedido_eventos e a linha auditável
+  await db
+    .update(pedidos)
+    .set({ deletadoEm: new Date(), deletadoPor: admin.sessao.nome })
+    .where(eq(pedidos.id, id));
   return NextResponse.json({ ok: true });
 }
 
@@ -144,7 +151,7 @@ export async function PATCH(
   const [atual] = await db
     .select()
     .from(pedidos)
-    .where(eq(pedidos.id, id))
+    .where(and(eq(pedidos.id, id), isNull(pedidos.deletadoEm)))
     .limit(1);
   if (!atual) {
     return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });

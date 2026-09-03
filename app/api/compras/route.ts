@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { compras, compraEventos, pecas, pedidoEventos, pedidos } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
   const q = url.searchParams.get("q")?.trim();
   const status = url.searchParams.get("status");
   const conditions: any[] = [];
+  conditions.push(isNull(compras.deletadoEm));
   if (q)
     conditions.push(
       or(

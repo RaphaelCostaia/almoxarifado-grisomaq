@@ -11,21 +11,23 @@ export async function GET() {
   const auth = await exigirAdminApi();
   if (!auth.ok) return auth.res;
 
-  // Totais globais
-  const totalPedidos = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(pedidos);
+  // Totais globais — todos filtram soft-delete
+  const totalPedidos = await db.execute(sql`
+    SELECT COUNT(*)::int as c FROM pedidos WHERE deletado_em IS NULL
+  `);
 
   const porStatus = await db.execute(sql`
     SELECT status::text as status, COUNT(*)::int as c
     FROM pedidos
+    WHERE deletado_em IS NULL
     GROUP BY status
   `);
 
   const topPecas = await db.execute(sql`
     SELECT descricao, COUNT(*)::int as c
     FROM pedidos
-    WHERE criado_em >= now() - interval '30 days'
+    WHERE deletado_em IS NULL
+      AND criado_em >= now() - interval '30 days'
     GROUP BY descricao
     ORDER BY c DESC
     LIMIT 8
@@ -34,7 +36,8 @@ export async function GET() {
   const topFrotas = await db.execute(sql`
     SELECT frota, COUNT(*)::int as c
     FROM pedidos
-    WHERE criado_em >= now() - interval '30 days'
+    WHERE deletado_em IS NULL
+      AND criado_em >= now() - interval '30 days'
     GROUP BY frota
     ORDER BY c DESC
     LIMIT 8
@@ -44,35 +47,44 @@ export async function GET() {
   const tempoMedio = await db.execute(sql`
     SELECT COALESCE(GREATEST(0, AVG(EXTRACT(EPOCH FROM (entregue_em - criado_em)) / 86400.0)), 0)::float as dias
     FROM pedidos
-    WHERE status = 'entregue' AND entregue_em >= now() - interval '30 days'
+    WHERE deletado_em IS NULL
+      AND status = 'entregue'
+      AND entregue_em >= now() - interval '30 days'
   `);
 
   // Compras últimos 30 dias
   const gastoMes = await db.execute(sql`
     SELECT COALESCE(SUM(valor_total), 0)::float as total, COUNT(*)::int as c
     FROM compras
-    WHERE status = 'recebida' AND atualizado_em >= now() - interval '30 days'
+    WHERE deletado_em IS NULL
+      AND status = 'recebida'
+      AND atualizado_em >= now() - interval '30 days'
   `);
 
-  // Compras por status (todas)
+  // Compras por status (todas ativas)
   const comprasPorStatus = await db.execute(sql`
     SELECT status::text as status, COUNT(*)::int as c
     FROM compras
+    WHERE deletado_em IS NULL
     GROUP BY status
   `);
 
-  // Compradas aguardando chegar (comprada = fornecedor confirmou, ainda não chegou)
+  // Compradas aguardando chegar
   const aguardandoChegar = await db.execute(sql`
     SELECT COUNT(*)::int as c,
            COALESCE(SUM(valor_total), 0)::float as total
     FROM compras
-    WHERE status = 'comprada'
+    WHERE deletado_em IS NULL
+      AND status = 'comprada'
   `);
 
   const topFornecedores = await db.execute(sql`
     SELECT fornecedor, COALESCE(SUM(valor_total), 0)::float as total, COUNT(*)::int as c
     FROM compras
-    WHERE status = 'recebida' AND fornecedor IS NOT NULL AND atualizado_em >= now() - interval '90 days'
+    WHERE deletado_em IS NULL
+      AND status = 'recebida'
+      AND fornecedor IS NOT NULL
+      AND atualizado_em >= now() - interval '90 days'
     GROUP BY fornecedor
     ORDER BY total DESC NULLS LAST
     LIMIT 6
@@ -92,12 +104,13 @@ export async function GET() {
     FROM dias
     LEFT JOIN pedidos p
       ON date_trunc('day', p.criado_em) = dias.dia
+      AND p.deletado_em IS NULL
     GROUP BY dias.dia
     ORDER BY dias.dia
   `);
 
   return NextResponse.json({
-    totalPedidos: totalPedidos[0]?.c ?? 0,
+    totalPedidos: Number((totalPedidos as any[])[0]?.c ?? 0),
     porStatus: (porStatus as any[]).map((r) => ({
       status: r.status,
       c: Number(r.c),

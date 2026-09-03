@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pedidos, pedidoEventos, pecas } from "@/db/schema";
 import { exigirSessaoApi } from "@/lib/api-auth";
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
     url.searchParams.get("ocultarFinalizados") === "1";
 
   const conditions = [] as any[];
+  conditions.push(isNull(pedidos.deletadoEm));
   if (q) {
     conditions.push(
       or(
@@ -68,10 +69,12 @@ export async function GET(req: NextRequest) {
 
   const frotasDistinct = await db
     .selectDistinct({ frota: pedidos.frota })
-    .from(pedidos);
+    .from(pedidos)
+    .where(isNull(pedidos.deletadoEm));
   const locaisDistinct = await db
     .selectDistinct({ local: pedidos.local })
-    .from(pedidos);
+    .from(pedidos)
+    .where(isNull(pedidos.deletadoEm));
 
   return NextResponse.json({
     pedidos: rows,

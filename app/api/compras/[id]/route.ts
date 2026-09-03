@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { compraEventos as _compraEventos } from "@/db/schema";
 import {
@@ -38,7 +38,10 @@ export async function GET(
   const auth = await exigirSessaoApi();
   if (!auth.ok) return auth.res;
   const id = Number(params.id);
-  const [c] = await db.select().from(compras).where(eq(compras.id, id));
+  const [c] = await db
+    .select()
+    .from(compras)
+    .where(and(eq(compras.id, id), isNull(compras.deletadoEm)));
   if (!c) return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
   const eventos = await db
     .select()
@@ -89,7 +92,10 @@ export async function DELETE(
   if (!Number.isFinite(id)) {
     return NextResponse.json({ error: "id_invalido" }, { status: 400 });
   }
-  const [c] = await db.select().from(compras).where(eq(compras.id, id));
+  const [c] = await db
+    .select()
+    .from(compras)
+    .where(and(eq(compras.id, id), isNull(compras.deletadoEm)));
   if (!c) {
     return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
   }
@@ -104,7 +110,10 @@ export async function DELETE(
       { status: 409 }
     );
   }
-  await db.delete(compras).where(eq(compras.id, id));
+  await db
+    .update(compras)
+    .set({ deletadoEm: new Date(), deletadoPor: admin.sessao.nome })
+    .where(eq(compras.id, id));
   return NextResponse.json({ ok: true, forcado: forcar });
 }
 
@@ -121,7 +130,10 @@ export async function PATCH(
   }
   const dados = { ...parsed.data, autor: admin.sessao.nome };
 
-  const [atual] = await db.select().from(compras).where(eq(compras.id, id));
+  const [atual] = await db
+    .select()
+    .from(compras)
+    .where(and(eq(compras.id, id), isNull(compras.deletadoEm)));
   if (!atual) return NextResponse.json({ error: "nao_encontrado" }, { status: 404 });
 
   // Valores efetivos após o merge (usa novo se veio, senão o atual)

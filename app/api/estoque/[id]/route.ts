@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pecas, pedidos } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
@@ -25,6 +25,7 @@ export async function DELETE(
     .where(
       and(
         eq(pedidos.pecaId, id),
+        isNull(pedidos.deletadoEm),
         sql`${pedidos.status} NOT IN ('entregue','cancelada')`
       )
     )
@@ -40,6 +41,9 @@ export async function DELETE(
     );
   }
 
-  await db.delete(pecas).where(eq(pecas.id, id));
+  await db
+    .update(pecas)
+    .set({ deletadoEm: new Date(), deletadoPor: admin.sessao.nome })
+    .where(eq(pecas.id, id));
   return NextResponse.json({ ok: true });
 }

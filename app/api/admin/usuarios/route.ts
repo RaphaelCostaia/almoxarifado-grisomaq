@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { asc, sql } from "drizzle-orm";
+import { asc, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { usuarios } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
@@ -27,6 +27,7 @@ export async function GET() {
       criadoEm: usuarios.criadoEm,
     })
     .from(usuarios)
+    .where(isNull(usuarios.deletadoEm))
     .orderBy(asc(usuarios.nome));
   return NextResponse.json({ usuarios: rows });
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { frotas } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const categoria = url.searchParams.get("categoria");
   const status = url.searchParams.get("status"); // 'ativos' | 'inativos' | 'todos'
 
-  const conds: any[] = [];
+  const conds: any[] = [isNull(frotas.deletadoEm)];
   if (q) {
     conds.push(
       or(
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   const rows = await db
     .select()
     .from(frotas)
-    .where(conds.length ? and(...conds) : undefined)
+    .where(and(...conds))
     .orderBy(frotas.categoria, asc(frotas.numero));
 
   const [resumo] = await db
@@ -64,7 +64,8 @@ export async function GET(req: NextRequest) {
       ativos: sql<number>`sum(case when ativo=1 then 1 else 0 end)::int`,
       inativos: sql<number>`sum(case when ativo=0 then 1 else 0 end)::int`,
     })
-    .from(frotas);
+    .from(frotas)
+    .where(isNull(frotas.deletadoEm));
 
   return NextResponse.json({ frotas: rows, resumo });
 }
