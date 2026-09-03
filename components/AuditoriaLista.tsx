@@ -22,13 +22,29 @@ const ENTIDADES = [
 
 const LIMIT = 50;
 
+type Filtros = {
+  q: string;
+  ator: string;
+  entidade: string;
+  acao: string;
+  de: string;
+  ate: string;
+};
+
+const FILTROS_VAZIOS: Filtros = {
+  q: "",
+  ator: "",
+  entidade: "todas",
+  acao: "todas",
+  de: "",
+  ate: "",
+};
+
 export function AuditoriaLista() {
-  const [q, setQ] = useState("");
-  const [ator, setAtor] = useState("");
-  const [entidade, setEntidade] = useState("todas");
-  const [acao, setAcao] = useState("todas");
-  const [de, setDe] = useState("");
-  const [ate, setAte] = useState("");
+  // Estado digitado (só na UI) vs. aplicado (dispara SWR).
+  // Assim a tabela não re-fetcha a cada tecla — só quando o admin clica Filtrar.
+  const [rascunho, setRascunho] = useState<Filtros>(FILTROS_VAZIOS);
+  const [ativo, setAtivo] = useState<Filtros>(FILTROS_VAZIOS);
   const [pagina, setPagina] = useState(0);
   const [detalhe, setDetalhe] = useState<AuditLog | null>(null);
   const [verificando, setVerificando] = useState(false);
@@ -36,13 +52,40 @@ export function AuditoriaLista() {
     null | { ok: boolean; total: number; primeiraDivergencia?: number }
   >(null);
 
+  function aplicar() {
+    setAtivo(rascunho);
+    setPagina(0);
+  }
+
+  function limpar() {
+    setRascunho(FILTROS_VAZIOS);
+    setAtivo(FILTROS_VAZIOS);
+    setPagina(0);
+  }
+
+  const filtrosSujos =
+    rascunho.q !== ativo.q ||
+    rascunho.ator !== ativo.ator ||
+    rascunho.entidade !== ativo.entidade ||
+    rascunho.acao !== ativo.acao ||
+    rascunho.de !== ativo.de ||
+    rascunho.ate !== ativo.ate;
+
+  const filtrosAtivos =
+    ativo.q ||
+    ativo.ator ||
+    ativo.entidade !== "todas" ||
+    ativo.acao !== "todas" ||
+    ativo.de ||
+    ativo.ate;
+
   const params = new URLSearchParams();
-  if (q) params.set("q", q);
-  if (ator) params.set("ator", ator);
-  if (entidade !== "todas") params.set("entidade", entidade);
-  if (acao !== "todas") params.set("acao", acao);
-  if (de) params.set("de", de);
-  if (ate) params.set("ate", ate);
+  if (ativo.q) params.set("q", ativo.q);
+  if (ativo.ator) params.set("ator", ativo.ator);
+  if (ativo.entidade !== "todas") params.set("entidade", ativo.entidade);
+  if (ativo.acao !== "todas") params.set("acao", ativo.acao);
+  if (ativo.de) params.set("de", ativo.de);
+  if (ativo.ate) params.set("ate", ativo.ate);
   params.set("limit", String(LIMIT));
   params.set("offset", String(pagina * LIMIT));
 
@@ -58,14 +101,14 @@ export function AuditoriaLista() {
 
   const exportUrl = useMemo(() => {
     const p = new URLSearchParams();
-    if (q) p.set("q", q);
-    if (ator) p.set("ator", ator);
-    if (entidade !== "todas") p.set("entidade", entidade);
-    if (acao !== "todas") p.set("acao", acao);
-    if (de) p.set("de", de);
-    if (ate) p.set("ate", ate);
+    if (ativo.q) p.set("q", ativo.q);
+    if (ativo.ator) p.set("ator", ativo.ator);
+    if (ativo.entidade !== "todas") p.set("entidade", ativo.entidade);
+    if (ativo.acao !== "todas") p.set("acao", ativo.acao);
+    if (ativo.de) p.set("de", ativo.de);
+    if (ativo.ate) p.set("ate", ativo.ate);
     return `/api/admin/auditoria/export?${p}`;
-  }, [q, ator, entidade, acao, de, ate]);
+  }, [ativo]);
 
   async function verificarIntegridade() {
     setVerificando(true);
@@ -139,75 +182,114 @@ export function AuditoriaLista() {
         </div>
       )}
 
-      <div className="card grid grid-cols-6 gap-2 p-3">
-        <input
-          className="input-base col-span-2"
-          placeholder="Buscar em resumo, ator, IP…"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPagina(0);
-          }}
-        />
-        <input
-          className="input-base"
-          placeholder="Ator"
-          value={ator}
-          onChange={(e) => {
-            setAtor(e.target.value);
-            setPagina(0);
-          }}
-        />
-        <select
-          className="input-base"
-          value={entidade}
-          onChange={(e) => {
-            setEntidade(e.target.value);
-            setPagina(0);
-          }}
-        >
-          {ENTIDADES.map((e) => (
-            <option key={e.key} value={e.key}>
-              {e.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input-base"
-          value={acao}
-          onChange={(e) => {
-            setAcao(e.target.value);
-            setPagina(0);
-          }}
-        >
-          <option value="todas">Todas as ações</option>
-          {AUDIT_ACOES.map((a) => (
-            <option key={a} value={a}>
-              {AUDIT_ACAO_LABELS[a]}
-            </option>
-          ))}
-        </select>
-        <div className="col-span-2 grid grid-cols-2 gap-2">
+      <form
+        className="card space-y-3 p-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          aplicar();
+        }}
+      >
+        <div className="grid grid-cols-6 gap-2">
           <input
-            type="date"
-            className="input-base"
-            value={de}
-            onChange={(e) => {
-              setDe(e.target.value);
-              setPagina(0);
-            }}
+            className="input-base col-span-2"
+            placeholder="Buscar em resumo, ator, IP…"
+            value={rascunho.q}
+            onChange={(e) => setRascunho({ ...rascunho, q: e.target.value })}
           />
           <input
-            type="date"
             className="input-base"
-            value={ate}
-            onChange={(e) => {
-              setAte(e.target.value);
-              setPagina(0);
-            }}
+            placeholder="Ator"
+            value={rascunho.ator}
+            onChange={(e) => setRascunho({ ...rascunho, ator: e.target.value })}
           />
+          <select
+            className="input-base"
+            value={rascunho.entidade}
+            onChange={(e) =>
+              setRascunho({ ...rascunho, entidade: e.target.value })
+            }
+          >
+            {ENTIDADES.map((e) => (
+              <option key={e.key} value={e.key}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input-base"
+            value={rascunho.acao}
+            onChange={(e) =>
+              setRascunho({ ...rascunho, acao: e.target.value })
+            }
+          >
+            <option value="todas">Todas as ações</option>
+            {AUDIT_ACOES.map((a) => (
+              <option key={a} value={a}>
+                {AUDIT_ACAO_LABELS[a]}
+              </option>
+            ))}
+          </select>
+          <div className="col-span-2 grid grid-cols-2 gap-2">
+            <input
+              type="date"
+              className="input-base"
+              value={rascunho.de}
+              onChange={(e) =>
+                setRascunho({ ...rascunho, de: e.target.value })
+              }
+              title="Data inicial"
+            />
+            <input
+              type="date"
+              className="input-base"
+              value={rascunho.ate}
+              onChange={(e) =>
+                setRascunho({ ...rascunho, ate: e.target.value })
+              }
+              title="Data final"
+            />
+          </div>
         </div>
-      </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={!filtrosSujos}
+            title={
+              filtrosSujos
+                ? "Aplicar filtros"
+                : "Nada mudou desde a última busca"
+            }
+          >
+            ⌕ Filtrar
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={limpar}
+            disabled={!filtrosAtivos && !filtrosSujos}
+          >
+            Limpar
+          </button>
+          {filtrosSujos && (
+            <span
+              className="text-[11px]"
+              style={{ color: "var(--warning)" }}
+            >
+              Filtros alterados — clique em <b>Filtrar</b> pra aplicar
+              (ou aperte Enter).
+            </span>
+          )}
+          {!filtrosSujos && filtrosAtivos && (
+            <span
+              className="text-[11px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Filtros aplicados.
+            </span>
+          )}
+        </div>
+      </form>
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
