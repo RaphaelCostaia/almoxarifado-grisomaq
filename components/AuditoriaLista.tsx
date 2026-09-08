@@ -416,8 +416,161 @@ export function AuditoriaLista() {
         </div>
       </div>
 
+      <ZonaDePerigo />
+
       {detalhe && <DetalheModal log={detalhe} onClose={() => setDetalhe(null)} />}
     </div>
+  );
+}
+
+function ZonaDePerigo() {
+  const [aberto, setAberto] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [resultado, setResultado] = useState<any>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const FRASE = "LIMPAR DADOS DE TESTE";
+  const podeExecutar = confirm.trim().toUpperCase() === FRASE;
+
+  async function executar() {
+    setErro(null);
+    setResultado(null);
+    setCarregando(true);
+    try {
+      const res = await fetch("/api/admin/system/limpar-teste", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmacao: confirm }),
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        setErro(j.mensagem ?? j.error ?? "Falha ao limpar.");
+        return;
+      }
+      setResultado(j);
+      setConfirm("");
+    } catch (e: any) {
+      setErro(e?.message ?? "Falha ao limpar.");
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  return (
+    <details
+      open={aberto}
+      onToggle={(e) => setAberto((e.target as HTMLDetailsElement).open)}
+      className="card p-4"
+      style={{ borderColor: "var(--danger-border)" }}
+    >
+      <summary
+        className="cursor-pointer text-sm font-bold"
+        style={{ color: "var(--danger)" }}
+      >
+        ⚠ Zona de perigo — Zerar dados de teste
+      </summary>
+      <div className="mt-3 space-y-3 text-sm">
+        <p style={{ color: "var(--text-muted)" }}>
+          Apaga <b>pedidos, compras, comentários, movimentações, notificações
+          e todo o audit_log</b>. Preserva usuários, frotas, peças e uploads.
+          As sequências de ID reiniciam do 1. Use uma vez antes de abrir o
+          sistema em produção real.
+        </p>
+        <p
+          className="rounded-md border p-2 text-xs"
+          style={{
+            borderColor: "var(--danger-border)",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
+          }}
+        >
+          <b>Irreversível.</b> Se quiser mesmo, digite abaixo:{" "}
+          <span className="font-mono font-bold">{FRASE}</span>
+        </p>
+        <input
+          className="input-base font-mono"
+          placeholder="Digite a frase de confirmação"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          disabled={carregando}
+        />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="btn-primary"
+            style={
+              podeExecutar
+                ? { background: "var(--danger)", borderColor: "var(--danger)" }
+                : undefined
+            }
+            disabled={!podeExecutar || carregando}
+            onClick={executar}
+          >
+            {carregando ? "Limpando…" : "🗑 Executar limpeza"}
+          </button>
+          {erro && (
+            <span
+              className="text-xs font-semibold"
+              style={{ color: "var(--danger)" }}
+            >
+              {erro}
+            </span>
+          )}
+        </div>
+
+        {resultado && (
+          <div
+            className="rounded-md border p-3 text-xs"
+            style={{
+              borderColor: "var(--brand-border)",
+              background: "var(--brand-soft)",
+              color: "var(--text)",
+            }}
+          >
+            <div
+              className="mb-2 font-bold"
+              style={{ color: "var(--brand)" }}
+            >
+              ✓ Limpeza concluída
+            </div>
+            <div className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-widest">
+              Removidos
+            </div>
+            <ul className="ml-3 space-y-0.5 font-mono">
+              {Object.entries(resultado.antes).map(([k, v]: any) => (
+                <li key={k}>
+                  {k}: {v} → {resultado.depois[k]}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 mb-1 font-mono text-[10px] font-semibold uppercase tracking-widest">
+              Preservados
+            </div>
+            <ul className="ml-3 space-y-0.5 font-mono">
+              {Object.entries(resultado.preservadosAntes).map(
+                ([k, v]: any) => (
+                  <li key={k}>
+                    {k}: {v} (agora {resultado.preservadosDepois[k]})
+                  </li>
+                )
+              )}
+            </ul>
+            {resultado.aviso && (
+              <div
+                className="mt-2 font-semibold"
+                style={{ color: "var(--danger)" }}
+              >
+                ⚠ {resultado.aviso}
+              </div>
+            )}
+            <div className="mt-2" style={{ color: "var(--text-muted)" }}>
+              Recarregue a página pra ver o log zerado.
+            </div>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 
