@@ -166,6 +166,34 @@ docker-compose.yml   app + Postgres 16 + volumes
 - Uploads acessíveis só por usuário logado (rota `/api/uploads/...` verifica sessão).
 - `AUTH_SECRET` **deve** ser trocado em produção. Se vazar, todos os cookies existentes viram inválidos ao trocar.
 
+## Preparar pra produção — zerar dados de teste
+
+Antes de entregar o sistema pro cliente usar de verdade, rode uma vez pra limpar os pedidos/compras/comentários/movimentações/notificações/audit_log criados durante testes. **Preserva** frotas, peças, usuários e uploads. Reinicia as sequências de ID (o primeiro pedido em produção será `#1`).
+
+No servidor:
+```bash
+docker exec -it <container-app> npm run db:limpar-teste
+```
+
+Ou localmente com `.env.local` apontando pro Postgres do EasyPanel:
+```bash
+npm run db:limpar-teste
+```
+
+O log confirma o que foi removido e o que foi preservado, com contagem antes/depois.
+
+## Manuais
+
+- [`MANUAL-USUARIO.pdf`](MANUAL-USUARIO.pdf) — pro funcionário: como abrir pedido, acompanhar, consultar estoque.
+- [`MANUAL-ADMIN.pdf`](MANUAL-ADMIN.pdf) — pro administrador: gestão completa + regras de negócio + backup + troubleshooting.
+
+Regenerar quando o conteúdo mudar:
+```bash
+pip install fpdf2
+python scripts/gerar-manuais.py
+```
+Fonte em `docs/manual-usuario.md` e `docs/manual-admin.md`.
+
 ## Trilha de auditoria imutável
 
 Toda ação humana no sistema vai pra tabela `audit_log` com **hash-chain SHA-256**: cada linha guarda o hash da anterior, então adulterar qualquer linha antiga quebra a cadeia daí pra frente. A tabela é protegida por trigger Postgres (`audit_log_readonly`) que bloqueia `UPDATE`, `DELETE` e `TRUNCATE` no nível do banco — mesmo o `owner` recebe erro. Deletar dados de negócio (pedidos, compras, peças, frotas, usuários) virou **soft delete** (`deletado_em, deletado_por`): a linha some da UI mas o rastro fica.

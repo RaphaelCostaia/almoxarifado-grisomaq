@@ -12,7 +12,8 @@
     "db:seed": "tsx --env-file=.env.local db/seed.ts",
     "db:seed-frotas": "tsx --env-file=.env.local db/seed-frotas.ts",
     "db:seed-pecas": "tsx --env-file=.env.local db/seed-pecas.ts",
-    "db:cleanup": "tsx --env-file=.env.local db/cleanup-duplicates.ts"
+    "db:cleanup": "tsx --env-file=.env.local db/cleanup-duplicates.ts",
+    "db:limpar-teste": "tsx --env-file=.env.local db/limpar-dados-teste.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
