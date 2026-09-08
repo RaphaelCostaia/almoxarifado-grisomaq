@@ -161,29 +161,53 @@ Guardar de memória:
 
 ## 10. Backup e manutenção
 
-### Backup do banco
+### Backups automáticos
 
-Rode periodicamente (recomendado: diário automático):
+O sistema roda um container dedicado (`backup`) que executa TODOS os dias às 03:00 (Brasília):
+
+- pg_dump completo do banco -> `/backups/db/grisomaq-<data>.dump`
+- tar.gz dos uploads (fotos, NFs) -> `/backups/uploads/uploads-<data>.tar.gz`
+- Retenção: 14 dias. Backups mais antigos apagam sozinhos.
+- Um snapshot é feito automaticamente quando o container sobe pela primeira vez.
+
+**Verificar que está funcionando:**
+
+Entre no EasyPanel -> serviço `backup` -> aba "Logs". Deve aparecer diariamente uma linha `[backup YYYY-MM-DD_HHMMSS] concluído. Estado atual: DB dumps: N, Uploads tars: N`.
+
+Se aparecer `FALHA no pg_dump`, chame o suporte técnico imediatamente.
+
+### Backup manual sob demanda
+
+Antes de uma manutenção arriscada ou pra tirar cópia extra:
 
 ```
-docker exec <container-db> pg_dump -U grisomaq grisomaq | gzip > backup-$(date +%F).sql.gz
+docker compose run --rm -e BACKUP_AGORA=1 backup
 ```
 
-Guarde em outro disco/nuvem.
+Aparece um novo arquivo em `/backups/db/` e `/backups/uploads/`.
 
-### Backup dos uploads
+### Restore do banco (procedimento sério)
 
-```
-docker cp <container-app>:/data/uploads ./backup-uploads-$(date +%F)/
-```
-
-Ou monte `/data` como volume externo do EasyPanel e faça snapshot dele.
-
-### Restaurar
+**Só faça em janela de manutenção, com o app parado.** Isso DESTRÓI o estado atual.
 
 ```
-gunzip -c backup-2026-09-08.sql.gz | docker exec -i <container-db> psql -U grisomaq grisomaq
+docker compose stop app
+docker cp meu-backup.dump <container-backup>:/tmp/restore.dump
+docker exec <container-backup> pg_restore -h db -U grisomaq -d grisomaq --clean --if-exists /tmp/restore.dump
+docker compose start app
 ```
+
+Verifique contagens depois (frotas, peças, pedidos) pra confirmar que voltou como esperado.
+
+### Cópia off-site (importante)
+
+Os backups vivem no MESMO VPS. Se o disco físico do servidor morrer, você perde tudo — inclusive os backups. **Uma vez por semana**, baixe uma cópia externa:
+
+```
+docker cp <container-backup>:/backups ./backup-grisomaq-$(date +%F)
+```
+
+Guarde em pen drive, HD externo ou Google Drive pessoal. Isso protege contra falha catastrófica do host.
 
 ### Girar AUTH_SECRET
 

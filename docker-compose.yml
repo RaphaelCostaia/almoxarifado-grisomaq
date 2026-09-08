@@ -49,6 +49,26 @@ services:
     ports:
       - "3000:3000"
 
+  backup:
+    build:
+      context: ./ops/backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: America/Sao_Paulo
+      POSTGRES_HOST: db
+      POSTGRES_USER: grisomaq
+      POSTGRES_DB: grisomaq
+      PGPASSWORD: ${POSTGRES_PASSWORD:-troque_esta_senha}
+      RETENCAO_DIAS: ${BACKUP_RETENCAO_DIAS:-14}
+      HORA_BACKUP: ${BACKUP_HORA:-03}
+    volumes:
+      - uploads:/uploads:ro
+      - backups:/backups
+
 volumes:
   pgdata:
   uploads:
+  backups:
