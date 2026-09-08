@@ -45,5 +45,15 @@ else
   echo "[grisomaq] db/seed-pecas.json não encontrado, pulei."
 fi
 
+# 7. Daemon de backup em background (pg_dump diário do banco + tar dos uploads)
+#    Loga na saída padrão junto com o app; EasyPanel captura tudo.
+export TZ="${TZ:-America/Sao_Paulo}"
+export RETENCAO_DIAS="${BACKUP_RETENCAO_DIAS:-14}"
+export HORA_BACKUP="${BACKUP_HORA:-03}"
+export BACKUP_DIR="/data/backups"
+export UPLOADS_SRC="/data/uploads"
+echo "[grisomaq] Iniciando daemon de backup em background (retenção ${RETENCAO_DIAS}d, disparo ${HORA_BACKUP}:00)…"
+/usr/local/bin/backup.sh 2>&1 | sed 's/^/[backup] /' &
+
 echo "[grisomaq] Subindo Next.js…"
 exec "$@"

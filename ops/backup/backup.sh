@@ -1,20 +1,30 @@
 #!/bin/bash
 # Daemon de backup diário — GRISOMAQ.
+# Roda como processo em background dentro do container do app.
 #
 # Backupeia:
-#   1. Postgres inteiro (pg_dump -Fc) → /backups/db/grisomaq-<ts>.dump
-#   2. Volume de uploads (tar.gz)     → /backups/uploads/uploads-<ts>.tar.gz
+#   1. Postgres inteiro (pg_dump -Fc)  -> /data/backups/db/grisomaq-<ts>.dump
+#   2. Pasta de uploads (tar.gz)       -> /data/backups/uploads/uploads-<ts>.tar.gz
 #
 # Retenção: RETENCAO_DIAS (default 14). Rotação apaga arquivos mais antigos.
 # Horário:  HORA_BACKUP em formato HH (default "03"), fuso do container ($TZ).
-# Loga em stdout → EasyPanel captura.
+# Loga em stdout -> EasyPanel captura.
 #
-# Modo one-shot pra teste: rodar com BACKUP_AGORA=1.
+# Precisa de POSTGRES_URL (a mesma que o app usa) OU
+# POSTGRES_URL_ADMIN. Prioridade: ADMIN > normal.
+#
+# Modo one-shot pra teste: rodar com BACKUP_AGORA=1 backup.sh
 set -eu
 RETENCAO_DIAS="${RETENCAO_DIAS:-14}"
 HORA_BACKUP="${HORA_BACKUP:-03}"
-BACKUP_DIR="/backups"
-UPLOADS_SRC="/uploads/uploads"
+BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
+UPLOADS_SRC="${UPLOADS_SRC:-/data/uploads}"
+CONN_URL="${POSTGRES_URL_ADMIN:-${POSTGRES_URL:-}}"
+
+if [ -z "$CONN_URL" ]; then
+  echo "[backup] ERRO: nem POSTGRES_URL_ADMIN nem POSTGRES_URL definidas. Abortando."
+  exit 1
+fi
 
 mkdir -p "$BACKUP_DIR/db" "$BACKUP_DIR/uploads"
 
@@ -24,8 +34,8 @@ fazer_backup() {
   db_file="$BACKUP_DIR/db/grisomaq-$ts.dump"
   up_file="$BACKUP_DIR/uploads/uploads-$ts.tar.gz"
 
-  echo "[backup $ts] pg_dump -Fc do database $POSTGRES_DB…"
-  if pg_dump -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc > "$db_file"; then
+  echo "[backup $ts] pg_dump -Fc do banco…"
+  if pg_dump "$CONN_URL" -Fc > "$db_file"; then
     echo "[backup $ts]   -> $(ls -lh "$db_file" | awk '{print $5, $NF}')"
   else
     echo "[backup $ts] FALHA no pg_dump. Ver logs acima."
@@ -56,7 +66,6 @@ fazer_backup() {
   echo "[backup $ts] concluído."
 }
 
-# Modo one-shot pra teste/manual
 if [ "${BACKUP_AGORA:-0}" = "1" ]; then
   fazer_backup
   exit 0
@@ -68,7 +77,8 @@ echo "[backup] Horário diário: ${HORA_BACKUP}:00"
 echo "[backup] Retenção:       ${RETENCAO_DIAS} dias"
 echo "[backup] Dir:            $BACKUP_DIR"
 
-echo "[backup] Executando snapshot inicial…"
+echo "[backup] Executando snapshot inicial em 30s (dando tempo pro app estabilizar)…"
+sleep 30
 fazer_backup || echo "[backup] snapshot inicial falhou — daemon continua"
 
 while true; do

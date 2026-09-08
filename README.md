@@ -184,73 +184,71 @@ O log confirma o que foi removido e o que foi preservado, com contagem antes/dep
 
 ## Backups automáticos
 
-Um serviço container dedicado (`backup`, definido no `docker-compose.yml`) roda ao lado do banco. Ele:
+Um **daemon de backup roda dentro do próprio container `app`**, em background junto do Next.js. Sem serviço extra pra configurar no EasyPanel — próximo deploy já sobe o backup.
 
-- **Roda todo dia às 03:00** (fuso America/Sao_Paulo).
-- Executa `pg_dump -Fc` do database `grisomaq` → `/backups/db/grisomaq-YYYY-MM-DD_HHMMSS.dump`.
-- Empacota o volume de uploads em `tar.gz` → `/backups/uploads/uploads-YYYY-MM-DD_HHMMSS.tar.gz`.
-- **Retenção 14 dias** — apaga automaticamente arquivos mais antigos.
-- Grava no volume Docker `backups` (isolado do `pgdata` e do `uploads`).
-- Faz um **snapshot inicial no primeiro boot** do container.
+- **Roda todo dia às 03:00** (fuso `America/Sao_Paulo`).
+- **Snapshot inicial** 30 segundos depois do container subir pela primeira vez.
+- Executa `pg_dump -Fc` do banco → `/data/backups/db/grisomaq-YYYY-MM-DD_HHMMSS.dump`.
+- Empacota `/data/uploads` em `tar.gz` → `/data/backups/uploads/uploads-YYYY-MM-DD_HHMMSS.tar.gz`.
+- **Retenção 14 dias** — arquivos mais antigos são apagados sozinhos.
+- Tudo grava no mesmo volume persistente `/data` do EasyPanel (mesmo do uploads).
 
-Configuração opcional via `.env` (defaults entre parênteses): `BACKUP_RETENCAO_DIAS` (14), `BACKUP_HORA` (03).
+Config opcional via env (defaults entre parênteses): `BACKUP_RETENCAO_DIAS` (14), `BACKUP_HORA` (03).
 
-**Verificar que está de pé** (logs em tempo real):
-```bash
-docker compose logs -f backup
+**Verificar que está de pé** — nos logs do serviço `app` no EasyPanel deve aparecer no boot:
 ```
-Deve aparecer `Daemon iniciado. Fuso: America/Sao_Paulo. Horário diário: 03:00. Retenção: 14 dias.` seguido do snapshot inicial.
+[grisomaq] Iniciando daemon de backup em background…
+[backup] Daemon iniciado.
+[backup] Fuso:           America/Sao_Paulo
+[backup] Horário diário: 03:00
+[backup] Retenção:       14 dias
+[backup] Executando snapshot inicial em 30s…
+[backup 2026-09-08_HHMMSS] pg_dump -Fc do banco…
+[backup 2026-09-08_HHMMSS]   -> 2.4M grisomaq-...dump
+[backup 2026-09-08_HHMMSS] concluído.
+```
 
 **Listar backups existentes**:
 ```bash
-docker exec <container-backup> ls -lh /backups/db /backups/uploads
+docker exec <container-app> ls -lh /data/backups/db /data/backups/uploads
 ```
 
-**Rodar um backup manual sob demanda** (ex.: antes de uma manutenção):
+**Backup manual sob demanda**:
 ```bash
-docker compose run --rm -e BACKUP_AGORA=1 backup
+docker exec -e BACKUP_AGORA=1 <container-app> /usr/local/bin/backup.sh
 ```
 
 ### Restaurar o banco
 
-⚠ Isto DESTRÓI os dados atuais e substitui pelo backup. Faça em janela de manutenção com o app parado.
+⚠ DESTRÓI os dados atuais. Faça em janela de manutenção.
 
 ```bash
-# 1) Para o app pra não haver escrita durante o restore
-docker compose stop app
+# Copia o dump escolhido pra dentro do container
+docker cp caminho/local/grisomaq-YYYY-MM-DD.dump <container-app>:/tmp/restore.dump
 
-# 2) Copia o dump escolhido pra dentro do container de backup
-docker cp caminho/local/grisomaq-YYYY-MM-DD_HHMMSS.dump <container-backup>:/tmp/restore.dump
-
-# 3) pg_restore com --clean --if-exists remove objetos antes de recriar
-docker exec <container-backup> \
-  pg_restore -h db -U grisomaq -d grisomaq --clean --if-exists /tmp/restore.dump
-
-# 4) Sobe o app de volta
-docker compose start app
+# Restaura
+docker exec <container-app> \
+  pg_restore "$POSTGRES_URL" --clean --if-exists /tmp/restore.dump
 ```
+
+Nota: como o daemon roda dentro do app, o próprio Next.js fica no ar durante o restore — mas mantenha usuários fora nesse período (avise ou temporariamente derrube a porta 3000).
 
 ### Restaurar os uploads
 
 ```bash
-docker compose stop app
-docker run --rm \
-  -v grisomaq_uploads:/data \
-  -v grisomaq_backups:/backups:ro \
-  postgres:16-alpine \
-  sh -c "cd /data/uploads && tar -xzf /backups/uploads/uploads-YYYY-MM-DD_HHMMSS.tar.gz"
-docker compose start app
+docker exec <container-app> \
+  sh -c "cd /data/uploads && tar -xzf /data/backups/uploads/uploads-YYYY-MM-DD.tar.gz"
 ```
 
 ### Cópia off-site (recomendado)
 
-Backups só existem no VPS. Se o disco físico morrer, perde tudo. Semanalmente, baixe uma cópia pra um pen drive ou nuvem pessoal:
+Backups vivem no MESMO VPS. Se o disco físico morrer, perde tudo. **Semanalmente**, baixe cópia externa:
 
 ```bash
-docker cp <container-backup>:/backups ./backups-local-$(date +%F)
+docker cp <container-app>:/data/backups ./backups-local-$(date +%F)
 ```
 
-Fase 2 (fora do escopo atual): copiar automaticamente pra bucket S3/Backblaze B2/DigitalOcean Spaces.
+Guarde em pen drive, HD externo ou Google Drive. Fase 2 (opcional): copiar automaticamente pra bucket S3/B2/DO Spaces.
 
 ## Manuais
 

@@ -163,51 +163,58 @@ Guardar de memória:
 
 ### Backups automáticos
 
-O sistema roda um container dedicado (`backup`) que executa TODOS os dias às 03:00 (Brasília):
+O daemon de backup roda DENTRO do proprio container do app (nao precisa configurar servico extra no EasyPanel). Executa TODOS os dias as 03:00 (Brasilia):
 
-- pg_dump completo do banco -> `/backups/db/grisomaq-<data>.dump`
-- tar.gz dos uploads (fotos, NFs) -> `/backups/uploads/uploads-<data>.tar.gz`
-- Retenção: 14 dias. Backups mais antigos apagam sozinhos.
-- Um snapshot é feito automaticamente quando o container sobe pela primeira vez.
+- pg_dump completo do banco -> `/data/backups/db/grisomaq-<data>.dump`
+- tar.gz dos uploads (fotos, NFs) -> `/data/backups/uploads/uploads-<data>.tar.gz`
+- Retencao: 14 dias. Backups mais antigos apagam sozinhos.
+- Um snapshot inicial e feito 30 segundos depois de subir o app pela primeira vez.
 
-**Verificar que está funcionando:**
+**Verificar que esta funcionando:**
 
-Entre no EasyPanel -> serviço `backup` -> aba "Logs". Deve aparecer diariamente uma linha `[backup YYYY-MM-DD_HHMMSS] concluído. Estado atual: DB dumps: N, Uploads tars: N`.
+Entre no EasyPanel -> servico `app` -> aba Logs. Nas linhas do boot deve aparecer:
+```
+[grisomaq] Iniciando daemon de backup em background...
+[backup] Daemon iniciado.
+[backup] Executando snapshot inicial em 30s...
+[backup YYYY-MM-DD_HHMMSS]   -> 2.4M grisomaq-...dump
+[backup YYYY-MM-DD_HHMMSS] concluido.
+```
 
-Se aparecer `FALHA no pg_dump`, chame o suporte técnico imediatamente.
+Depois disso, todo dia as 03:00 aparece uma nova sequencia identica.
+
+Se aparecer `FALHA no pg_dump`, chame o suporte tecnico imediatamente.
 
 ### Backup manual sob demanda
 
-Antes de uma manutenção arriscada ou pra tirar cópia extra:
+Antes de uma manutencao arriscada ou pra tirar copia extra:
 
 ```
-docker compose run --rm -e BACKUP_AGORA=1 backup
+docker exec -e BACKUP_AGORA=1 <container-app> /usr/local/bin/backup.sh
 ```
 
-Aparece um novo arquivo em `/backups/db/` e `/backups/uploads/`.
+Aparece um novo arquivo em `/data/backups/db/` e `/data/backups/uploads/`.
 
-### Restore do banco (procedimento sério)
+### Restore do banco (procedimento serio)
 
-**Só faça em janela de manutenção, com o app parado.** Isso DESTRÓI o estado atual.
-
-```
-docker compose stop app
-docker cp meu-backup.dump <container-backup>:/tmp/restore.dump
-docker exec <container-backup> pg_restore -h db -U grisomaq -d grisomaq --clean --if-exists /tmp/restore.dump
-docker compose start app
-```
-
-Verifique contagens depois (frotas, peças, pedidos) pra confirmar que voltou como esperado.
-
-### Cópia off-site (importante)
-
-Os backups vivem no MESMO VPS. Se o disco físico do servidor morrer, você perde tudo — inclusive os backups. **Uma vez por semana**, baixe uma cópia externa:
+**Faca em janela de manutencao.** Isso DESTROI o estado atual.
 
 ```
-docker cp <container-backup>:/backups ./backup-grisomaq-$(date +%F)
+docker cp meu-backup.dump <container-app>:/tmp/restore.dump
+docker exec <container-app> pg_restore "$POSTGRES_URL" --clean --if-exists /tmp/restore.dump
 ```
 
-Guarde em pen drive, HD externo ou Google Drive pessoal. Isso protege contra falha catastrófica do host.
+Verifique contagens depois (frotas, pecas, pedidos) pra confirmar que voltou como esperado.
+
+### Copia off-site (importante)
+
+Os backups vivem no MESMO VPS. Se o disco fisico do servidor morrer, voce perde tudo. **Uma vez por semana**, baixe uma copia externa:
+
+```
+docker cp <container-app>:/data/backups ./backup-grisomaq-$(date +%F)
+```
+
+Guarde em pen drive, HD externo ou Google Drive pessoal.
 
 ### Girar AUTH_SECRET
 

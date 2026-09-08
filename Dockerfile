@@ -32,6 +32,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
+# pg_dump 16 (mesma major do banco) + bash pro daemon de backup + tzdata pra America/Sao_Paulo
+RUN apk add --no-cache postgresql16-client bash tzdata coreutils tar gzip findutils
+
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
@@ -50,10 +53,12 @@ COPY --chown=nextjs:nodejs tsconfig.json ./tsconfig.json
 COPY --chown=nextjs:nodejs db ./db
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+COPY ops/backup/backup.sh /usr/local/bin/backup.sh
+RUN chmod +x /docker-entrypoint.sh /usr/local/bin/backup.sh
 
-# Diretório persistente pra uploads
-RUN mkdir -p /data/uploads && chown -R nextjs:nodejs /data
+# Diretório persistente pra uploads + backups
+RUN mkdir -p /data/uploads /data/backups/db /data/backups/uploads && \
+    chown -R nextjs:nodejs /data
 VOLUME ["/data"]
 
 USER nextjs

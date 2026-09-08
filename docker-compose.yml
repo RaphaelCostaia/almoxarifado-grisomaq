@@ -44,31 +44,16 @@ services:
       SEED_ADMIN: ${SEED_ADMIN:-1}
       UPLOAD_DIR: /data/uploads
       NEXT_PUBLIC_UPLOAD_BASE_URL: /api/uploads
+      # Daemon de backup diário roda dentro deste container.
+      # Grava em /data/backups/db e /data/backups/uploads.
+      TZ: America/Sao_Paulo
+      BACKUP_RETENCAO_DIAS: ${BACKUP_RETENCAO_DIAS:-14}
+      BACKUP_HORA: ${BACKUP_HORA:-03}
     volumes:
       - uploads:/data
     ports:
       - "3000:3000"
 
-  backup:
-    build:
-      context: ./ops/backup
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      TZ: America/Sao_Paulo
-      POSTGRES_HOST: db
-      POSTGRES_USER: grisomaq
-      POSTGRES_DB: grisomaq
-      PGPASSWORD: ${POSTGRES_PASSWORD:-troque_esta_senha}
-      RETENCAO_DIAS: ${BACKUP_RETENCAO_DIAS:-14}
-      HORA_BACKUP: ${BACKUP_HORA:-03}
-    volumes:
-      - uploads:/uploads:ro
-      - backups:/backups
-
 volumes:
   pgdata:
   uploads:
-  backups:
