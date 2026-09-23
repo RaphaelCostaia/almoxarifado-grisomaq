@@ -105,7 +105,12 @@ Use pra sentir a "temperatura" da operação. Se "Em atraso" está alto, você t
 
 CRUD das 266 frotas + implementos importados do XLSX GRISOMAQ.
 
-**Filtros:** busca (nº/modelo/marca/placa), categoria (Todas / Equipamentos / Implementos), status (Em operação / Baixadas / Todos).
+**Filtros:** busca (nº/modelo/marca/placa), categoria (Todas / Equipamentos / Implementos / COs), status (Em operação / Baixadas / Todos).
+
+**3 categorias:**
+- **Equipamentos** (chip verde) — veículos e máquinas móveis. Ex.: TOYOTA HILUX (frota 1), Trator JD 6180 (frota 87).
+- **Implementos** (chip amarelo) — acessórios acoplados. Ex.: CARRETA 4 RODAS, TANQUE COMBUSTÍVEL.
+- **Centros de Operação — COs** (chip azul) — infraestrutura fixa: oficinas, silos, setores administrativos. Ex.: CO25 (Oficina de Tratores), CO37 (Silo Barra do Ouro). Vem 189 COs cadastrados do sistema legado da GRISOMAQ. Cadastre novos pela aba Frotas sempre que aparecer um CO novo no ERP.
 
 **Cadastrar frota:** "+ Nova frota". Campo Nº obrigatório e único.
 

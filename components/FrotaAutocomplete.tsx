@@ -121,10 +121,14 @@ export function FrotaAutocomplete({
                     background:
                       f.categoria === "implemento"
                         ? "var(--warning-soft)"
+                        : f.categoria === "centro_operacao"
+                        ? "rgba(59,130,246,0.15)"
                         : "var(--brand-soft)",
                     color:
                       f.categoria === "implemento"
                         ? "var(--warning)"
+                        : f.categoria === "centro_operacao"
+                        ? "#3b82f6"
                         : "var(--brand)",
                   }}
                 >
@@ -144,7 +148,11 @@ export function FrotaAutocomplete({
                     {[
                       f.placa,
                       f.ano,
-                      f.categoria === "implemento" ? "implemento" : null,
+                      f.categoria === "implemento"
+                        ? "implemento"
+                        : f.categoria === "centro_operacao"
+                        ? "centro de operação"
+                        : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}

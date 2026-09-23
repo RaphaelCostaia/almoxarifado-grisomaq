@@ -15,9 +15,9 @@ export function FrotaEditDialog({ frota, onClose, onSaved }: Props) {
   const nova = frota === null;
 
   const [numero, setNumero] = useState(frota?.numero ?? "");
-  const [categoria, setCategoria] = useState<"equipamento" | "implemento">(
-    frota?.categoria ?? "equipamento"
-  );
+  const [categoria, setCategoria] = useState<
+    "equipamento" | "implemento" | "centro_operacao"
+  >(frota?.categoria ?? "equipamento");
   const [modelo, setModelo] = useState(frota?.modelo ?? "");
   const [marca, setMarca] = useState(frota?.marca ?? "");
   const [descricao, setDescricao] = useState(frota?.descricao ?? "");
@@ -86,24 +86,24 @@ export function FrotaEditDialog({ frota, onClose, onSaved }: Props) {
           </div>
           <div className="col-span-2">
             <label className="label-form">Categoria</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["equipamento", "implemento"] as const).map((c) => (
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { key: "equipamento", label: "equipamento", cor: "var(--brand)" },
+                  { key: "implemento", label: "implemento", cor: "var(--warning)" },
+                  { key: "centro_operacao", label: "CO", cor: "#3b82f6" },
+                ] as const
+              ).map((c) => (
                 <button
                   type="button"
-                  key={c}
-                  onClick={() => setCategoria(c)}
-                  className="rounded-md border px-3 py-2 text-sm font-semibold capitalize transition"
+                  key={c.key}
+                  onClick={() => setCategoria(c.key)}
+                  className="rounded-md border px-3 py-2 text-sm font-semibold transition"
                   style={
-                    categoria === c
+                    categoria === c.key
                       ? {
-                          background:
-                            c === "implemento"
-                              ? "var(--warning)"
-                              : "var(--brand)",
-                          borderColor:
-                            c === "implemento"
-                              ? "var(--warning)"
-                              : "var(--brand)",
+                          background: c.cor,
+                          borderColor: c.cor,
                           color: "#000",
                         }
                       : {
@@ -112,8 +112,13 @@ export function FrotaEditDialog({ frota, onClose, onSaved }: Props) {
                           color: "var(--text-muted)",
                         }
                   }
+                  title={
+                    c.key === "centro_operacao"
+                      ? "Centro de Operação (oficina, silo, setor)"
+                      : undefined
+                  }
                 >
-                  {c}
+                  {c.label}
                 </button>
               ))}
             </div>
@@ -121,48 +126,56 @@ export function FrotaEditDialog({ frota, onClose, onSaved }: Props) {
         </div>
 
         <div>
-          <label className="label-form">Modelo</label>
+          <label className="label-form">
+            {categoria === "centro_operacao" ? "Nome do CO" : "Modelo"}
+          </label>
           <input
             className="input-base"
             value={modelo}
             onChange={(e) => setModelo(e.target.value)}
-            placeholder="Ex: TOYOTA HILUX CD 4X4"
+            placeholder={
+              categoria === "centro_operacao"
+                ? "Ex: Oficina de Tratores, Silo Barra do Ouro"
+                : "Ex: TOYOTA HILUX CD 4X4"
+            }
             maxLength={128}
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="label-form">Marca</label>
-            <input
-              className="input-base"
-              value={marca}
-              onChange={(e) => setMarca(e.target.value)}
-              placeholder="Ex: TOYOTA"
-              maxLength={64}
-            />
+        {categoria !== "centro_operacao" && (
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="label-form">Marca</label>
+              <input
+                className="input-base"
+                value={marca}
+                onChange={(e) => setMarca(e.target.value)}
+                placeholder="Ex: TOYOTA"
+                maxLength={64}
+              />
+            </div>
+            <div>
+              <label className="label-form">Ano</label>
+              <input
+                className="input-base font-mono"
+                value={ano}
+                onChange={(e) => setAno(e.target.value)}
+                placeholder="2020"
+                maxLength={8}
+              />
+            </div>
+            <div>
+              <label className="label-form">Placa</label>
+              <input
+                className="input-base font-mono uppercase"
+                value={placa}
+                onChange={(e) => setPlaca(e.target.value.toUpperCase())}
+                placeholder="ABC-1234"
+                maxLength={16}
+              />
+            </div>
           </div>
-          <div>
-            <label className="label-form">Ano</label>
-            <input
-              className="input-base font-mono"
-              value={ano}
-              onChange={(e) => setAno(e.target.value)}
-              placeholder="2020"
-              maxLength={8}
-            />
-          </div>
-          <div>
-            <label className="label-form">Placa</label>
-            <input
-              className="input-base font-mono uppercase"
-              value={placa}
-              onChange={(e) => setPlaca(e.target.value.toUpperCase())}
-              placeholder="ABC-1234"
-              maxLength={16}
-            />
-          </div>
-        </div>
+        )}
 
         {categoria === "implemento" && (
           <div>

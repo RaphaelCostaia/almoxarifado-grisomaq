@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 
 const NovaSchema = z.object({
   numero: z.string().min(1).max(32),
-  categoria: z.enum(["equipamento", "implemento"]).default("equipamento"),
+  categoria: z
+    .enum(["equipamento", "implemento", "centro_operacao"])
+    .default("equipamento"),
   modelo: z.string().max(128).optional().nullable(),
   marca: z.string().max(64).optional().nullable(),
   descricao: z.string().max(128).optional().nullable(),
@@ -45,7 +47,11 @@ export async function GET(req: NextRequest) {
       )
     );
   }
-  if (categoria === "equipamento" || categoria === "implemento") {
+  if (
+    categoria === "equipamento" ||
+    categoria === "implemento" ||
+    categoria === "centro_operacao"
+  ) {
     conds.push(eq(frotas.categoria, categoria));
   }
   if (status === "ativos") conds.push(eq(frotas.ativo, 1));
@@ -62,6 +68,7 @@ export async function GET(req: NextRequest) {
       total: sql<number>`count(*)::int`,
       equipamentos: sql<number>`sum(case when categoria='equipamento' then 1 else 0 end)::int`,
       implementos: sql<number>`sum(case when categoria='implemento' then 1 else 0 end)::int`,
+      centrosOperacao: sql<number>`sum(case when categoria='centro_operacao' then 1 else 0 end)::int`,
       ativos: sql<number>`sum(case when ativo=1 then 1 else 0 end)::int`,
       inativos: sql<number>`sum(case when ativo=0 then 1 else 0 end)::int`,
     })

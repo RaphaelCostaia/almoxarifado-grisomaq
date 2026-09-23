@@ -152,12 +152,12 @@ export function NovoPedidoDialog({
       <form onSubmit={submit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label-form">Frota / Equipamento</label>
+            <label className="label-form">Frota / Equipamento / CO</label>
             <FrotaAutocomplete
               valor={frota}
               onValor={setFrota}
               required
-              placeholder="Nº da frota, modelo ou placa…"
+              placeholder="Nº da frota, CO, modelo ou placa…"
               onFrota={(f) => {
                 if (!f) return;
                 // Só preenche modelo/ano se ainda estiverem vazios (não sobrescreve)
@@ -173,6 +173,12 @@ export function NovoPedidoDialog({
                 }
               }}
             />
+            <p
+              className="mt-1 text-[10px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Manutenção de oficina, silo ou setor? Digite CO (ex.: CO37).
+            </p>
           </div>
           <div>
             <label className="label-form">Local de trabalho</label>

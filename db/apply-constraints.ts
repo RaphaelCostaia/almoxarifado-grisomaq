@@ -132,6 +132,18 @@ async function main() {
       END IF;
     END $$;
   `);
+  // Adiciona 'centro_operacao' (COs — oficinas, silo etc como categoria de frota)
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_enum
+        WHERE enumlabel = 'centro_operacao'
+          AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'categoria_frota')
+      ) THEN
+        ALTER TYPE categoria_frota ADD VALUE 'centro_operacao';
+      END IF;
+    END $$;
+  `);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS frotas (
       id SERIAL PRIMARY KEY,

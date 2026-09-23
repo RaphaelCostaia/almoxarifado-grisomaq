@@ -23,7 +23,9 @@ Dica: salva a página nos favoritos e no atalho do celular. Funciona igual no co
 
 Clique em **+ Novo pedido** no topo da tela.
 
-**Frota** — digite o número (ex.: `95`). O sistema mostra sugestões (`95 — Toyota Hilux CD 4x4`). Selecione a certa; o modelo e ano preenchem sozinhos.
+**Frota / Equipamento / CO** — digite o número (ex.: `95`). O sistema mostra sugestões (`95 — Toyota Hilux CD 4x4`). Selecione a certa; o modelo e ano preenchem sozinhos.
+
+Se a peça é pra oficina, silo ou outra estrutura fixa (não veículo), digite o CO correspondente (ex.: `CO25` — Oficina de Tratores, `CO28` — Oficina de Caldeiraria, `CO37` — Silo Barra do Ouro). O sistema tem todos os COs da empresa cadastrados.
 
 **Peça (descrição)** — comece a digitar o nome da peça. Se ela já existe no almoxarifado, aparece uma sugestão com o saldo atual. Selecione e siga. Se não achar nada parecido, escreva à mão — o administrador identifica depois.
 

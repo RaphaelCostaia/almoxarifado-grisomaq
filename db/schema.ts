@@ -17,6 +17,7 @@ export const roleEnum = pgEnum("role", ["admin", "funcionario"]);
 export const categoriaFrotaEnum = pgEnum("categoria_frota", [
   "equipamento",
   "implemento",
+  "centro_operacao",
 ]);
 
 export const prioridadeEnum = pgEnum("prioridade", ["normal", "urgente"]);

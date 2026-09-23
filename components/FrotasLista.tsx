@@ -12,14 +12,19 @@ type Resumo = {
   total: number;
   equipamentos: number;
   implementos: number;
+  centrosOperacao: number;
   ativos: number;
   inativos: number;
 };
 
-const CATEGORIAS: { key: "todas" | "equipamento" | "implemento"; label: string }[] = [
+const CATEGORIAS: {
+  key: "todas" | "equipamento" | "implemento" | "centro_operacao";
+  label: string;
+}[] = [
   { key: "todas", label: "Todas" },
   { key: "equipamento", label: "Equipamentos" },
   { key: "implemento", label: "Implementos" },
+  { key: "centro_operacao", label: "COs" },
 ];
 
 const STATUS: { key: "todos" | "ativos" | "inativos"; label: string }[] = [
@@ -31,7 +36,7 @@ const STATUS: { key: "todos" | "ativos" | "inativos"; label: string }[] = [
 export function FrotasLista() {
   const [q, setQ] = useState("");
   const [categoria, setCategoria] = useState<
-    "todas" | "equipamento" | "implemento"
+    "todas" | "equipamento" | "implemento" | "centro_operacao"
   >("todas");
   const [status, setStatus] = useState<"todos" | "ativos" | "inativos">(
     "ativos"
@@ -53,6 +58,7 @@ export function FrotasLista() {
     total: 0,
     equipamentos: 0,
     implementos: 0,
+    centrosOperacao: 0,
     ativos: 0,
     inativos: 0,
   };
@@ -68,7 +74,7 @@ export function FrotasLista() {
             Administração
           </div>
           <h1 className="text-xl font-bold tracking-tight">
-            Frotas & Implementos
+            Frotas, Implementos & COs
           </h1>
         </div>
         <button
@@ -80,10 +86,11 @@ export function FrotasLista() {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         <Res n={r.total} label="Total" />
         <Res n={r.equipamentos} label="Equipamentos" tone="brand" />
         <Res n={r.implementos} label="Implementos" tone="warning" />
+        <Res n={r.centrosOperacao} label="COs" tone="info" />
         <Res
           n={r.inativos}
           label="Baixadas"
@@ -171,10 +178,14 @@ export function FrotasLista() {
                       background:
                         f.categoria === "implemento"
                           ? "var(--warning-soft)"
+                          : f.categoria === "centro_operacao"
+                          ? "rgba(59,130,246,0.15)"
                           : "var(--brand-soft)",
                       color:
                         f.categoria === "implemento"
                           ? "var(--warning)"
+                          : f.categoria === "centro_operacao"
+                          ? "#3b82f6"
                           : "var(--brand)",
                     }}
                   >
@@ -185,7 +196,11 @@ export function FrotasLista() {
                   className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  {f.categoria === "implemento" ? "IMPL" : "EQUIP"}
+                  {f.categoria === "implemento"
+                    ? "IMPL"
+                    : f.categoria === "centro_operacao"
+                    ? "CO"
+                    : "EQUIP"}
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="font-semibold">{f.modelo || "—"}</div>
@@ -289,13 +304,15 @@ function Res({
 }: {
   n: number;
   label: string;
-  tone?: "brand" | "warning" | "muted";
+  tone?: "brand" | "warning" | "muted" | "info";
 }) {
   const color =
     tone === "brand"
       ? "var(--brand)"
       : tone === "warning"
       ? "var(--warning)"
+      : tone === "info"
+      ? "#3b82f6"
       : tone === "muted"
       ? "var(--text-muted)"
       : "var(--text)";
