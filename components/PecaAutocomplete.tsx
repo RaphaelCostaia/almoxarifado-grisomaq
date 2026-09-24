@@ -101,51 +101,78 @@ export function PecaAutocomplete({
         />
       )}
       {aberto && opcoes.length > 0 && (
-        <div className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-md border border-oliva-100 bg-white shadow-lg">
-          <div className="border-b border-oliva-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-oliva-600">
+        <div className="absolute z-30 mt-1 max-h-72 w-full overflow-x-hidden overflow-y-auto rounded-md border border-oliva-100 bg-white shadow-lg">
+          <div className="sticky top-0 border-b border-oliva-100 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-oliva-600">
             Peças cadastradas no estoque
           </div>
-          {opcoes.map((p, i) => (
-            <button
-              type="button"
-              key={p.id}
-              onClick={() => selecionar(p)}
-              className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-oliva-50 ${
-                foco === i ? "bg-oliva-50" : ""
-              }`}
-            >
-              {porCodigo ? (
-                <span className="min-w-0 flex-1">
-                  <span className="font-mono font-semibold text-oliva-900">
-                    {p.codigo ?? "—"}
-                  </span>
-                  <span className="ml-2 truncate text-[11px] text-oliva-600">
-                    {p.nome}
-                  </span>
-                </span>
-              ) : (
-                <span>
-                  <span className="font-semibold text-oliva-900">{p.nome}</span>
-                  {p.codigo && (
-                    <span className="ml-2 font-mono text-[11px] text-oliva-600">
-                      {p.codigo}
-                    </span>
-                  )}
-                </span>
-              )}
-              <span
-                className={`chip ${
-                  toNum(p.saldo) === 0
-                    ? "!bg-red-100 !text-red-700"
-                    : toNum(p.saldo) <= toNum(p.minimo)
-                    ? "!bg-amber-100 !text-amber-800"
-                    : ""
+          {opcoes.map((p, i) => {
+            const saldoZero = toNum(p.saldo) === 0;
+            const saldoBaixo =
+              !saldoZero && toNum(p.saldo) <= toNum(p.minimo);
+            const chipCls = saldoZero
+              ? "!bg-red-100 !text-red-700"
+              : saldoBaixo
+              ? "!bg-amber-100 !text-amber-800"
+              : "";
+            return (
+              <button
+                type="button"
+                key={p.id}
+                onClick={() => selecionar(p)}
+                className={`flex w-full items-start gap-3 border-b border-oliva-100 px-3 py-2 text-left last:border-b-0 hover:bg-oliva-50 ${
+                  foco === i ? "bg-oliva-50" : ""
                 }`}
               >
-                {formatSaldo(p.saldo, p.unidade)} {p.unidade}
-              </span>
-            </button>
-          ))}
+                <div className="min-w-0 flex-1">
+                  {porCodigo ? (
+                    <>
+                      <div className="font-mono text-[13px] font-bold text-oliva-900">
+                        {p.codigo ?? "—"}
+                      </div>
+                      <div
+                        className="mt-0.5 text-[12px] leading-tight text-oliva-700"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {p.nome}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="text-[13px] font-semibold leading-tight text-oliva-900"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {p.nome}
+                      </div>
+                      {p.codigo && (
+                        <div className="mt-0.5 font-mono text-[10px] text-oliva-600">
+                          {p.codigo}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                <span
+                  className={`chip shrink-0 whitespace-nowrap ${chipCls}`}
+                  title={`Saldo ${formatSaldo(p.saldo, p.unidade)} ${p.unidade}`}
+                >
+                  {formatSaldo(p.saldo, p.unidade)} {p.unidade}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
