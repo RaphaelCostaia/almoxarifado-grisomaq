@@ -254,13 +254,27 @@ export function NovoPedidoDialog({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label-form">Código da peça (opcional)</label>
-            <input
-              className="input-base font-mono"
-              placeholder="Ex: 21715165, MB-A0001234"
-              value={codigoPeca}
-              onChange={(e) => setCodigoPeca(e.target.value)}
-              maxLength={64}
+            <PecaAutocomplete
+              porCodigo
+              valor={codigoPeca}
+              onValor={setCodigoPeca}
+              placeholder="Ex: 5569, 21715165, MB-A0001234"
+              onPeca={(p) => {
+                if (!p) return;
+                // Fonte da verdade: cadastro do estoque sobrescreve descrição/unidade
+                setPeca(p);
+                setDescricao(p.nome);
+                setUnidade(p.unidade);
+                if (p.codigo) setCodigoPeca(p.codigo);
+              }}
             />
+            <p
+              className="mt-1 text-[10px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Sabe o código do material? Digite aqui — a nomenclatura preenche
+              sozinha.
+            </p>
           </div>
           <div>
             <label className="label-form">Fabricante (opcional)</label>

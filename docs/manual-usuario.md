@@ -29,6 +29,8 @@ Se a peça é pra oficina, silo ou outra estrutura fixa (não veículo), digite 
 
 **Peça (descrição)** — comece a digitar o nome da peça. Se ela já existe no almoxarifado, aparece uma sugestão com o saldo atual. Selecione e siga. Se não achar nada parecido, escreva à mão — o administrador identifica depois.
 
+**Se você sabe o CÓDIGO** (ex.: `5569`, `21715165`, `MB-A0001234`), pode ir direto no campo "Código da peça" — o sistema busca no catálogo e preenche a descrição, unidade e vincula ao estoque automaticamente. Atalho útil quando você tem o número em mãos e não quer digitar o nome.
+
 **Quantidade** e **unidade** — número inteiro e a unidade que faz sentido (`un`, `pc`, `lt`, `kg`, `mt`…). O padrão é `un`.
 
 **Prioridade** — `Normal` ou `🔴 Urgente`. Só marque urgente quando o equipamento está parado ou a operação depende.
