@@ -101,37 +101,69 @@ export function PecaAutocomplete({
         />
       )}
       {aberto && opcoes.length > 0 && (
-        <div className="absolute z-30 mt-1 max-h-72 w-full overflow-x-hidden overflow-y-auto rounded-md border border-oliva-100 bg-white shadow-lg">
-          <div className="sticky top-0 border-b border-oliva-100 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-oliva-600">
+        <div
+          className="absolute z-30 mt-1 max-h-72 w-full overflow-x-hidden overflow-y-auto rounded-md border shadow-lg"
+          style={{
+            background: "var(--surface)",
+            borderColor: "var(--border)",
+            boxShadow: "var(--shadow-md)",
+          }}
+        >
+          <div
+            className="sticky top-0 border-b px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest"
+            style={{
+              background: "var(--surface)",
+              borderColor: "var(--border)",
+              color: "var(--text-muted)",
+            }}
+          >
             Peças cadastradas no estoque
           </div>
           {opcoes.map((p, i) => {
             const saldoZero = toNum(p.saldo) === 0;
             const saldoBaixo =
               !saldoZero && toNum(p.saldo) <= toNum(p.minimo);
-            const chipCls = saldoZero
-              ? "!bg-red-100 !text-red-700"
+            const chipStyle: React.CSSProperties = saldoZero
+              ? {
+                  background: "var(--danger-soft)",
+                  color: "var(--danger)",
+                }
               : saldoBaixo
-              ? "!bg-amber-100 !text-amber-800"
-              : "";
+              ? {
+                  background: "var(--warning-soft)",
+                  color: "var(--warning)",
+                }
+              : {
+                  background: "var(--surface-3)",
+                  color: "var(--text-muted)",
+                };
+            const rowStyle: React.CSSProperties = {
+              borderColor: "var(--border)",
+              background:
+                foco === i ? "var(--surface-3)" : "transparent",
+            };
             return (
               <button
                 type="button"
                 key={p.id}
                 onClick={() => selecionar(p)}
-                className={`flex w-full items-start gap-3 border-b border-oliva-100 px-3 py-2 text-left last:border-b-0 hover:bg-oliva-50 ${
-                  foco === i ? "bg-oliva-50" : ""
-                }`}
+                onMouseEnter={() => setFoco(i)}
+                className="flex w-full items-start gap-3 border-b px-3 py-2 text-left last:border-b-0 transition"
+                style={rowStyle}
               >
                 <div className="min-w-0 flex-1">
                   {porCodigo ? (
                     <>
-                      <div className="font-mono text-[13px] font-bold text-oliva-900">
+                      <div
+                        className="font-mono text-[13px] font-bold"
+                        style={{ color: "var(--text)" }}
+                      >
                         {p.codigo ?? "—"}
                       </div>
                       <div
-                        className="mt-0.5 text-[12px] leading-tight text-oliva-700"
+                        className="mt-0.5 text-[12px] leading-tight"
                         style={{
+                          color: "var(--text-muted)",
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
@@ -145,8 +177,9 @@ export function PecaAutocomplete({
                   ) : (
                     <>
                       <div
-                        className="text-[13px] font-semibold leading-tight text-oliva-900"
+                        className="text-[13px] font-semibold leading-tight"
                         style={{
+                          color: "var(--text)",
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
@@ -157,7 +190,10 @@ export function PecaAutocomplete({
                         {p.nome}
                       </div>
                       {p.codigo && (
-                        <div className="mt-0.5 font-mono text-[10px] text-oliva-600">
+                        <div
+                          className="mt-0.5 font-mono text-[10px]"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           {p.codigo}
                         </div>
                       )}
@@ -165,7 +201,8 @@ export function PecaAutocomplete({
                   )}
                 </div>
                 <span
-                  className={`chip shrink-0 whitespace-nowrap ${chipCls}`}
+                  className="chip shrink-0 whitespace-nowrap"
+                  style={chipStyle}
                   title={`Saldo ${formatSaldo(p.saldo, p.unidade)} ${p.unidade}`}
                 >
                   {formatSaldo(p.saldo, p.unidade)} {p.unidade}
