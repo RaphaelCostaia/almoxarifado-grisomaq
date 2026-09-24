@@ -68,14 +68,12 @@ export function PedidoCard({
           {pedido.local && (
             <span className="chip chip-info">📍 {pedido.local}</span>
           )}
-          {pedido.quantidade > 1 && (
-            <span
-              className="font-mono text-[10px] font-bold tabular-nums"
-              style={{ color: "var(--text-muted)" }}
-            >
-              ×{pedido.quantidade} {pedido.unidade}
-            </span>
-          )}
+          <span
+            className="font-mono text-[10px] font-bold tabular-nums"
+            style={{ color: "var(--text-muted)" }}
+          >
+            ×{pedido.quantidade} {pedido.unidade}
+          </span>
         </div>
         <div
           className="mt-1.5 line-clamp-2 text-[13px] font-semibold leading-snug"

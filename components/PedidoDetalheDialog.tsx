@@ -180,6 +180,11 @@ export function PedidoDetalheDialog({
         <Field label="Fabricante" v={pedido.fabricante ?? "—"} />
         <Field label="Solicitante" v={pedido.solicitante} />
         <Field label="Motivo" v={pedido.motivo} />
+        <Field
+          label="Quantidade solicitada"
+          v={`${pedido.quantidade} ${pedido.unidade}`}
+          mono
+        />
         <Field label="Solicitado em" v={formatBR(pedido.criadoEm)} />
         <Field
           label="Última atualização"
