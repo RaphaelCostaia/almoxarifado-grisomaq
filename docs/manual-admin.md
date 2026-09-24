@@ -35,6 +35,8 @@ O Kanban é o coração do sistema. 6 colunas na ordem do fluxo:
 
 **Exportar CSV:** botão "⬇ Exportar" no topo. Opcional filtro de período (`de` / `até`). Abre no Excel com acento correto.
 
+**Filtrar por data de criação:** no header dos Pedidos tem um bloco "📅 Data" com atalhos Hoje / 7d / 30d + intervalo personalizado (dois inputs date). O "×" limpa. Combina com os outros filtros (frota, local, urgentes). Os KPIs do topo continuam globais — os contadores das colunas do Kanban seguem o filtro.
+
 ## 3. Aba Estoque
 
 Lista das 14.146 peças cadastradas (catálogo GMAIS importado).

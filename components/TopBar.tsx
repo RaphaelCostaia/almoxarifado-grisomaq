@@ -17,10 +17,39 @@ type Props = {
   onSoAtraso: (v: boolean) => void;
   ocultarFinalizados: boolean;
   onOcultarFinalizados: (v: boolean) => void;
+  de: string;
+  ate: string;
+  onDe: (v: string) => void;
+  onAte: (v: string) => void;
   onNovoPedido: () => void;
 };
 
+function hojeISO() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function diasAtras(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export function TopBar(p: Props) {
+  const hoje = hojeISO();
+  const d7 = diasAtras(6);
+  const d30 = diasAtras(29);
+  const ehHoje = p.de === hoje && p.ate === hoje;
+  const eh7d = p.de === d7 && p.ate === hoje;
+  const eh30d = p.de === d30 && p.ate === hoje;
+  const temFiltroData = !!p.de || !!p.ate;
+
   return (
     <div className="card flex flex-wrap items-center gap-2 p-2.5">
       <div className="relative min-w-[220px] flex-1">
@@ -83,6 +112,122 @@ export function TopBar(p: Props) {
       >
         Ocultar finalizados
       </Toggle>
+
+      {/* Filtro por data de criação */}
+      <div
+        className="flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-1"
+        style={{
+          background: "var(--surface)",
+          borderColor: temFiltroData ? "var(--brand-border)" : "var(--border)",
+        }}
+        title="Filtrar por data de criação"
+      >
+        <span
+          className="font-mono text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: "var(--text-muted)" }}
+        >
+          📅 Data
+        </span>
+        <button
+          type="button"
+          className="rounded px-2 py-0.5 text-[11px] font-semibold transition"
+          onClick={() => {
+            p.onDe(hoje);
+            p.onAte(hoje);
+          }}
+          style={
+            ehHoje
+              ? {
+                  background: "var(--brand-soft)",
+                  color: "var(--brand)",
+                }
+              : { color: "var(--text-muted)" }
+          }
+        >
+          Hoje
+        </button>
+        <button
+          type="button"
+          className="rounded px-2 py-0.5 text-[11px] font-semibold transition"
+          onClick={() => {
+            p.onDe(d7);
+            p.onAte(hoje);
+          }}
+          style={
+            eh7d
+              ? {
+                  background: "var(--brand-soft)",
+                  color: "var(--brand)",
+                }
+              : { color: "var(--text-muted)" }
+          }
+        >
+          7d
+        </button>
+        <button
+          type="button"
+          className="rounded px-2 py-0.5 text-[11px] font-semibold transition"
+          onClick={() => {
+            p.onDe(d30);
+            p.onAte(hoje);
+          }}
+          style={
+            eh30d
+              ? {
+                  background: "var(--brand-soft)",
+                  color: "var(--brand)",
+                }
+              : { color: "var(--text-muted)" }
+          }
+        >
+          30d
+        </button>
+        <input
+          type="date"
+          className="rounded border px-1.5 py-0.5 text-[11px]"
+          style={{
+            background: "var(--surface-2, transparent)",
+            borderColor: "var(--border)",
+            color: "var(--text)",
+          }}
+          value={p.de}
+          onChange={(e) => p.onDe(e.target.value)}
+          title="De"
+        />
+        <span
+          className="text-[10px]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          até
+        </span>
+        <input
+          type="date"
+          className="rounded border px-1.5 py-0.5 text-[11px]"
+          style={{
+            background: "var(--surface-2, transparent)",
+            borderColor: "var(--border)",
+            color: "var(--text)",
+          }}
+          value={p.ate}
+          onChange={(e) => p.onAte(e.target.value)}
+          title="Até"
+        />
+        {temFiltroData && (
+          <button
+            type="button"
+            className="rounded px-1.5 text-[13px] font-bold leading-none transition"
+            style={{ color: "var(--text-muted)" }}
+            onClick={() => {
+              p.onDe("");
+              p.onAte("");
+            }}
+            title="Limpar filtro de data"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       <div className="ml-auto flex items-center gap-2">
         <a
           href="/api/export"

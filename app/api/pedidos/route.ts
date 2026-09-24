@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pedidos, pedidoEventos, pecas } from "@/db/schema";
 import { exigirSessaoApi } from "@/lib/api-auth";
@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
   const urgente = url.searchParams.get("urgente") === "1";
   const ocultarFinalizados =
     url.searchParams.get("ocultarFinalizados") === "1";
+  const de = url.searchParams.get("de"); // YYYY-MM-DD
+  const ate = url.searchParams.get("ate");
 
   const conditions = [] as any[];
   conditions.push(isNull(pedidos.deletadoEm));
@@ -61,6 +63,8 @@ export async function GET(req: NextRequest) {
       sql`${pedidos.status} NOT IN ('entregue','cancelada')`
     );
   }
+  if (de) conditions.push(gte(pedidos.criadoEm, new Date(`${de}T00:00:00`)));
+  if (ate) conditions.push(lte(pedidos.criadoEm, new Date(`${ate}T23:59:59`)));
 
   const rows = await db
     .select()

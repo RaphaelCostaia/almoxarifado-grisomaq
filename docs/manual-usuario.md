@@ -62,6 +62,7 @@ Filtros no topo:
 - Filtrar por frota específica.
 - Só urgentes.
 - Esconder finalizados (só o que está andando).
+- **Data** — atalhos "Hoje", "7d", "30d" ou intervalo personalizado. Útil pra achar rápido o que você abriu no dia.
 
 ## 5. Notificações (sino no topo da tela)
 

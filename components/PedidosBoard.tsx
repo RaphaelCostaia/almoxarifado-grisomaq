@@ -46,6 +46,8 @@ export function PedidosBoard() {
   const [soUrgentes, setSoUrgentes] = useState(false);
   const [soAtraso, setSoAtraso] = useState(false);
   const [ocultarFinalizados, setOcultarFinalizados] = useState(false);
+  const [de, setDe] = useState("");
+  const [ate, setAte] = useState("");
   const [novo, setNovo] = useState(false);
   const [detalheId, setDetalheId] = useState<number | null>(null);
   const [seenIds, setSeenIds] = useState<Set<number>>(new Set());
@@ -61,6 +63,8 @@ export function PedidosBoard() {
       setSoUrgentes(!!f.soUrgentes);
       setSoAtraso(!!f.soAtraso);
       setOcultarFinalizados(!!f.ocultarFinalizados);
+      setDe(f.de ?? "");
+      setAte(f.ate ?? "");
     }
     // Pede permissão pra notificação (silencioso se recusar)
     if (typeof Notification !== "undefined" && Notification.permission === "default") {
@@ -77,8 +81,10 @@ export function PedidosBoard() {
       soUrgentes,
       soAtraso,
       ocultarFinalizados,
+      de,
+      ate,
     });
-  }, [q, frota, local, soUrgentes, soAtraso, ocultarFinalizados]);
+  }, [q, frota, local, soUrgentes, soAtraso, ocultarFinalizados, de, ate]);
 
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -86,6 +92,8 @@ export function PedidosBoard() {
   if (local !== "todos") params.set("local", local);
   if (soUrgentes) params.set("urgente", "1");
   if (ocultarFinalizados) params.set("ocultarFinalizados", "1");
+  if (de) params.set("de", de);
+  if (ate) params.set("ate", ate);
 
   const { data, isLoading, mutate } = useSWR<{
     pedidos: Pedido[];
@@ -178,6 +186,10 @@ export function PedidosBoard() {
         onSoAtraso={setSoAtraso}
         ocultarFinalizados={ocultarFinalizados}
         onOcultarFinalizados={setOcultarFinalizados}
+        de={de}
+        ate={ate}
+        onDe={setDe}
+        onAte={setAte}
         onNovoPedido={() => setNovo(true)}
       />
       <KPIBar />
