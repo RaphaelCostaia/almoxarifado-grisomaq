@@ -136,7 +136,53 @@ Você NÃO pode rebaixar a si mesmo (evita ficar sem admin no sistema). Se preci
 
 **Desativar** é preferível a excluir — preserva histórico de pedidos abertos por essa pessoa.
 
-## 8. Aba Auditoria
+## 8. Aba Manutenção — trocas de óleo e afins
+
+Módulo pra organizar as trocas de óleo/filtro da frota, integrado ao relatório do GMAIS que você já usa.
+
+**Duas abas dentro do módulo:**
+
+**A) Kanban Oficina** (default) — 3 colunas simples:
+- **Programada** — OS criadas por você, aguardando oficina.
+- **Em execução** — oficina começou o serviço.
+- **Concluída** — troca feita.
+
+Cada card mostra frota + compartimento + peça + quantidade. Botões: `▶ Iniciar` (programada → em execução), `✓ Concluir` (abre modal), `Cancelar`, `Ver`.
+
+**B) Relatório GMAIS** — snapshot importado do PDF. Cada linha mostra frota, compartimento, última troca, hodômetro, km faltando, peça recomendada. Filtros: busca livre, frota, "só vencidas". Cada linha tem botão `+ Programar` que cria uma OS na coluna "Programada" do Kanban.
+
+### Importar o relatório do GMAIS
+
+1. Vá em **Manutenção → Relatório GMAIS**.
+2. No topo, clique no seletor de arquivo e escolha o PDF `Relatorios_GMAIS_XXX.pdf` exportado do GMAIS.
+3. Sistema lê e mostra um preview: *"X linhas em Y frotas, Z marcadas como vencidas"*.
+4. Confira e clique **✓ Confirmar e gravar**. O snapshot anterior é substituído.
+5. Reimportar depois só atualiza — não duplica.
+
+### Programar uma troca
+
+Na aba Relatório GMAIS, clique **+ Programar** na linha que quer. Confirme. A OS aparece na coluna "Programada" do Kanban.
+
+### Concluir uma troca (baixa automática de estoque)
+
+Ao clicar **✓ Concluir** num card em "Em execução":
+1. Modal pede **hodômetro atual** (obrigatório).
+2. Confirma a quantidade consumida da peça.
+3. Se peça está vinculada ao estoque, mostra saldo atual e alerta se vai zerar.
+4. Ao confirmar, sistema:
+   - Marca OS como concluída (data + hodômetro + quem concluiu).
+   - **Dá baixa automática** no estoque da peça.
+   - Registra movimentação com motivo "Manutenção OS #N".
+5. Se a peça não está vinculada (só código texto), não baixa nada — você pode registrar manualmente pela aba Estoque depois.
+
+### Regras críticas
+
+- Nenhuma OS é criada automaticamente do import. **Você decide** o que virar OS.
+- Snapshot do GMAIS é só referência — a fonte da verdade continua sendo o GMAIS.
+- OS excluída é soft delete (`deletado_em`) — fica no audit_log.
+- Todas as ações vão pro rastro imutável (aba Auditoria mostra ações `manutencao_*`).
+
+## 9. Aba Auditoria
 
 Rastro imutável de tudo que aconteceu. 33 tipos de ação categorizados.
 
@@ -154,7 +200,7 @@ Após alterar filtros, **clique "⌕ Filtrar"** (ou Enter). A busca só dispara 
 
 **Não é possível apagar linhas do audit_log pelo sistema.** Bloqueio via trigger Postgres (`audit_log_readonly`). Nem o admin faz. Só o owner do banco no `psql` consegue — e isso quebra a hash-chain.
 
-## 9. Regras de negócio críticas (checklist)
+## 10. Regras de negócio críticas (checklist)
 
 Guardar de memória:
 
@@ -166,7 +212,7 @@ Guardar de memória:
 - **Sequências reiniciadas em produção** — o primeiro pedido depois do "reset de dados de teste" tem id=1.
 - **Uploads em `/data/uploads`** — protegidos por sessão (rota `/api/uploads/[...file]` valida antes de servir).
 
-## 10. Backup e manutenção
+## 11. Backup e manutenção
 
 ### Backups automáticos
 
@@ -234,7 +280,7 @@ Se suspeita de vazamento:
 
 Uma vez por mês: entra em Auditoria → clica "🔒 Verificar integridade". Se retornar verde, tudo certo. Se vermelho, alguém mexeu no banco por fora.
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 **"Cliente diz que a alteração não aparece."**  
 Cache do navegador. Peça pra ele fazer **Ctrl+Shift+R** (Windows) ou **Cmd+Shift+R** (Mac). Se persistir, abra em janela anônima.
@@ -257,7 +303,7 @@ Verifica se o usuário está `ativo=1` na aba Usuários. Também verifica se ele
 **"Sistema fora do ar."**  
 Entra no EasyPanel → veja se o container `app` está rodando. Se não, "Restart". Se seguir caído, olha os logs do container procurando erro. Se banco caiu, container `db` também precisa reiniciar.
 
-## 12. Contato técnico
+## 13. Contato técnico
 
 Bug persistente ou dúvida além do manual: contate o desenvolvedor responsável. Tenha em mãos:
 - URL da tela onde ocorreu.
