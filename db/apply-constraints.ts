@@ -272,6 +272,87 @@ async function main() {
     );
   }
 
+  // ==========================================================================
+  // MÓDULO MANUTENÇÃO — tabelas isoladas. Zero impacto no que já existe.
+  // Só cria se ainda não existir. Nunca altera coluna existente aqui.
+  // ==========================================================================
+  console.log("[constraints] Criando enum + tabelas do módulo Manutenção…");
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'status_manutencao') THEN
+        CREATE TYPE status_manutencao AS ENUM
+          ('programada','em_execucao','concluida','cancelada');
+      END IF;
+    END $$;
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS manutencao_registros_gmais (
+      id SERIAL PRIMARY KEY,
+      frota_numero varchar(64) NOT NULL,
+      frota_modelo varchar(128),
+      compartimento_codigo varchar(16) NOT NULL,
+      compartimento_tipo varchar(64) NOT NULL,
+      ultima_troca_data varchar(16),
+      ultima_troca_hodometro varchar(32),
+      km_intervalo varchar(32),
+      hodometro_atual varchar(32),
+      km_faltando varchar(32),
+      dias_faltando varchar(16),
+      peca_codigo varchar(64),
+      peca_nome varchar(255),
+      capacidade varchar(32),
+      vencido integer NOT NULL DEFAULT 0,
+      importado_em timestamp with time zone NOT NULL DEFAULT now(),
+      importado_por varchar(64) NOT NULL
+    );
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS manutencao_gmais_frota_idx
+      ON manutencao_registros_gmais (frota_numero);
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS manutencao_gmais_unico_idx
+      ON manutencao_registros_gmais (frota_numero, compartimento_codigo);
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS manutencao_ordens (
+      id SERIAL PRIMARY KEY,
+      frota_numero varchar(64) NOT NULL,
+      frota_modelo varchar(128),
+      compartimento_codigo varchar(16),
+      compartimento_tipo varchar(64) NOT NULL,
+      peca_id integer REFERENCES pecas(id) ON DELETE SET NULL,
+      peca_codigo varchar(64),
+      peca_descricao varchar(255),
+      quantidade numeric(12,3) NOT NULL DEFAULT 1,
+      unidade varchar(16) NOT NULL DEFAULT 'un',
+      status status_manutencao NOT NULL DEFAULT 'programada',
+      observacoes text,
+      criado_por varchar(64) NOT NULL,
+      iniciado_em timestamp with time zone,
+      iniciado_por varchar(64),
+      concluido_em timestamp with time zone,
+      concluido_por varchar(64),
+      hodometro_concluido varchar(32),
+      criado_em timestamp with time zone NOT NULL DEFAULT now(),
+      atualizado_em timestamp with time zone NOT NULL DEFAULT now(),
+      deletado_em timestamp with time zone,
+      deletado_por varchar(64)
+    );
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS manutencao_ordens_status_idx
+      ON manutencao_ordens (status);
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS manutencao_ordens_frota_idx
+      ON manutencao_ordens (frota_numero);
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS manutencao_ordens_deletado_idx
+      ON manutencao_ordens (deletado_em);
+  `);
+
   console.log("[constraints] ✓ Concluído.");
   process.exit(0);
 }

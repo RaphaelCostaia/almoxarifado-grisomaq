@@ -273,6 +273,129 @@ export const movimentacoes = pgTable(
   })
 );
 
+// ============================================================================
+// MÓDULO MANUTENÇÃO — trocas de óleo, filtros e afins.
+//
+// Duas tabelas isoladas do resto do sistema:
+//
+//   1) manutencao_registros_gmais — snapshot do PDF do GMAIS. Cada import
+//      substitui o snapshot antigo (ou complementa se novos itens). Serve
+//      SÓ como fonte de dados pra tela de "Relatório GMAIS" — não é fonte
+//      da verdade e não vira OS automática.
+//
+//   2) manutencao_ordens — Ordens de Serviço criadas pelo admin ao clicar
+//      "Programar troca". Passam por Programada → Em execução → Concluída,
+//      dão baixa no estoque ao concluir (se pecaId preenchido).
+//
+// Ambas usam frotaNumero (varchar) em vez de FK pra frotas.id — assim se
+// alguém baixar/deletar uma frota em produção, as OS históricas sobrevivem.
+// ============================================================================
+
+export const statusManutencaoEnum = pgEnum("status_manutencao", [
+  "programada",
+  "em_execucao",
+  "concluida",
+  "cancelada",
+]);
+
+export const manutencaoRegistrosGmais = pgTable(
+  "manutencao_registros_gmais",
+  {
+    id: serial("id").primaryKey(),
+    frotaNumero: varchar("frota_numero", { length: 64 }).notNull(),
+    frotaModelo: varchar("frota_modelo", { length: 128 }),
+    compartimentoCodigo: varchar("compartimento_codigo", { length: 16 }).notNull(),
+    compartimentoTipo: varchar("compartimento_tipo", { length: 64 }).notNull(),
+    ultimaTrocaData: varchar("ultima_troca_data", { length: 16 }),
+    ultimaTrocaHodometro: varchar("ultima_troca_hodometro", { length: 32 }),
+    kmIntervalo: varchar("km_intervalo", { length: 32 }),
+    hodometroAtual: varchar("hodometro_atual", { length: 32 }),
+    kmFaltando: varchar("km_faltando", { length: 32 }),
+    diasFaltando: varchar("dias_faltando", { length: 16 }),
+    pecaCodigo: varchar("peca_codigo", { length: 64 }),
+    pecaNome: varchar("peca_nome", { length: 255 }),
+    capacidade: varchar("capacidade", { length: 32 }),
+    vencido: integer("vencido").notNull().default(0),
+    importadoEm: timestamp("importado_em", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    importadoPor: varchar("importado_por", { length: 64 }).notNull(),
+  },
+  (t) => ({
+    frotaIdx: index("manutencao_gmais_frota_idx").on(t.frotaNumero),
+    unico: index("manutencao_gmais_unico_idx").on(
+      t.frotaNumero,
+      t.compartimentoCodigo
+    ),
+  })
+);
+
+export const manutencaoOrdens = pgTable(
+  "manutencao_ordens",
+  {
+    id: serial("id").primaryKey(),
+    frotaNumero: varchar("frota_numero", { length: 64 }).notNull(),
+    frotaModelo: varchar("frota_modelo", { length: 128 }),
+    compartimentoCodigo: varchar("compartimento_codigo", { length: 16 }),
+    compartimentoTipo: varchar("compartimento_tipo", { length: 64 }).notNull(),
+    // Peça sugerida pra troca (pode ser vinculada ao estoque ou texto livre)
+    pecaId: integer("peca_id").references(() => pecas.id, {
+      onDelete: "set null",
+    }),
+    pecaCodigo: varchar("peca_codigo", { length: 64 }),
+    pecaDescricao: varchar("peca_descricao", { length: 255 }),
+    quantidade: numeric("quantidade", { precision: 12, scale: 3 })
+      .notNull()
+      .default("1"),
+    unidade: varchar("unidade", { length: 16 }).notNull().default("un"),
+    status: statusManutencaoEnum("status").notNull().default("programada"),
+    observacoes: text("observacoes"),
+    // Trilha de execução
+    criadoPor: varchar("criado_por", { length: 64 }).notNull(),
+    iniciadoEm: timestamp("iniciado_em", { withTimezone: true }),
+    iniciadoPor: varchar("iniciado_por", { length: 64 }),
+    concluidoEm: timestamp("concluido_em", { withTimezone: true }),
+    concluidoPor: varchar("concluido_por", { length: 64 }),
+    hodometroConcluido: varchar("hodometro_concluido", { length: 32 }),
+    criadoEm: timestamp("criado_em", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    atualizadoEm: timestamp("atualizado_em", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    // Soft delete (padrão do sistema)
+    deletadoEm: timestamp("deletado_em", { withTimezone: true }),
+    deletadoPor: varchar("deletado_por", { length: 64 }),
+  },
+  (t) => ({
+    statusIdx: index("manutencao_ordens_status_idx").on(t.status),
+    frotaIdx: index("manutencao_ordens_frota_idx").on(t.frotaNumero),
+    deletadoIdx: index("manutencao_ordens_deletado_idx").on(t.deletadoEm),
+  })
+);
+
+export type ManutencaoRegistroGmais = typeof manutencaoRegistrosGmais.$inferSelect;
+export type NovoManutencaoRegistroGmais = typeof manutencaoRegistrosGmais.$inferInsert;
+export type ManutencaoOrdem = typeof manutencaoOrdens.$inferSelect;
+export type NovaManutencaoOrdem = typeof manutencaoOrdens.$inferInsert;
+
+export const STATUS_MANUTENCAO_LABELS: Record<
+  ManutencaoOrdem["status"],
+  string
+> = {
+  programada: "Programada",
+  em_execucao: "Em execução",
+  concluida: "Concluída",
+  cancelada: "Cancelada",
+};
+
+export const STATUS_MANUTENCAO_ORDEM: ManutencaoOrdem["status"][] = [
+  "programada",
+  "em_execucao",
+  "concluida",
+  "cancelada",
+];
+
 export const auditLog = pgTable(
   "audit_log",
   {
