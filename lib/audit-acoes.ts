@@ -40,6 +40,16 @@ export const AUDIT_ACOES = [
   // Arquivos / export
   "arquivo_upload",
   "export_csv",
+  // Manutenção
+  "manutencao_import_pdf_preview",
+  "manutencao_import_pdf_confirmado",
+  "manutencao_ordem_criar",
+  "manutencao_ordem_iniciar",
+  "manutencao_ordem_concluir",
+  "manutencao_ordem_cancelar",
+  "manutencao_ordem_reabrir",
+  "manutencao_ordem_editar",
+  "manutencao_ordem_soft_delete",
 ] as const;
 
 export type AuditAcao = (typeof AUDIT_ACOES)[number];
@@ -52,7 +62,8 @@ export type AuditEntidade =
   | "usuario"
   | "sessao"
   | "arquivo"
-  | "export";
+  | "export"
+  | "manutencao";
 
 export const AUDIT_ACAO_LABELS: Record<AuditAcao, string> = {
   login_ok: "Login (sucesso)",
@@ -87,4 +98,13 @@ export const AUDIT_ACAO_LABELS: Record<AuditAcao, string> = {
   usuario_mudar_role: "Perfil (role) alterado",
   arquivo_upload: "Arquivo enviado",
   export_csv: "Exportação CSV",
+  manutencao_import_pdf_preview: "Manutenção — preview do PDF do GMAIS",
+  manutencao_import_pdf_confirmado: "Manutenção — import confirmado",
+  manutencao_ordem_criar: "OS de manutenção criada",
+  manutencao_ordem_iniciar: "OS em execução",
+  manutencao_ordem_concluir: "OS concluída",
+  manutencao_ordem_cancelar: "OS cancelada",
+  manutencao_ordem_reabrir: "OS reaberta",
+  manutencao_ordem_editar: "OS editada",
+  manutencao_ordem_soft_delete: "OS excluída",
 };
