@@ -336,6 +336,12 @@ def main():
         subtitulo="Operação completa do sistema: pedidos, compras, estoque, frotas, usuários e auditoria",
         pdf_out=ROOT / "MANUAL-ADMIN.pdf",
     )
+    gerar(
+        DOCS / "manual-troca-oleo.md",
+        titulo_capa="Manual — Troca de Óleo",
+        subtitulo="Fluxo do módulo Manutenção: importar PDF do GMAIS, programar OS e concluir trocas com baixa automática de estoque",
+        pdf_out=ROOT / "MANUAL-TROCA-OLEO.pdf",
+    )
 
 
 if __name__ == "__main__":
