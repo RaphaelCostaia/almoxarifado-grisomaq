@@ -10,13 +10,26 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// pdf-parse é CommonJS — importa via require pra evitar issues do
-// arquivo "test data" no import path.
+// pdf-parse v2 exporta a classe PDFParse. Recebe {data: Uint8Array} e
+// devolve TextResult com .text agregado. Sempre chamar destroy() no fim
+// pra liberar o worker do pdf.js.
 async function extrairTextoPdf(buffer: Buffer): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const pdfParse = require("pdf-parse");
-  const res = await pdfParse(buffer);
-  return String(res.text || "");
+  const mod: any = await import("pdf-parse");
+  const PDFParse = mod.PDFParse ?? mod.default?.PDFParse;
+  if (!PDFParse) {
+    throw new Error("pdf-parse: PDFParse não encontrado no módulo");
+  }
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+  try {
+    const r = await parser.getText();
+    return String(r?.text ?? "");
+  } finally {
+    try {
+      await parser.destroy();
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 export async function POST(req: NextRequest) {

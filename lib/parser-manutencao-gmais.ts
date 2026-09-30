@@ -1,13 +1,15 @@
 // Parser do relatório PDF "Posição Lubrificação/Manutenção/Garantias da Frota"
 // exportado do GMAIS pela GRISOMAQ.
 //
-// O layout do relatório tem colunas de largura fixa; cada frota abre uma
-// seção que se estende por várias linhas (uma linha por compartimento).
-// A primeira linha da frota tem: <n>{modelo} <cod-comp>-<tipo> <últ_data> …
-// As linhas subsequentes só têm dados de compartimento.
+// O pdf-parse (baseado em pdfjs) não preserva a ordem visual das colunas —
+// tokens de uma mesma linha podem aparecer fora de posição. Por isso o
+// parser é baseado em EXTRAÇÃO DE TOKENS heurística em cada linha:
+//   - captura padrões conhecidos independente da posição
+//   - decide o papel de cada número pelo contexto
 //
-// Nunca lançamos exceção pro caller — se uma linha não bater no regex, é
-// ignorada silenciosamente (o relatório tem headers e rodapés variados).
+// Nunca lançamos exceção pro caller — linhas não reconhecidas são ignoradas
+// silenciosamente (o relatório tem cabeçalhos e rodapés que precisam ser
+// filtrados).
 
 export type LinhaManutencao = {
   frotaNumero: string;
@@ -26,53 +28,222 @@ export type LinhaManutencao = {
   vencido: boolean;
 };
 
-// Regex de compartimento com tolerância a campos ausentes.
-// Estrutura:
-//   NN-TIPO ...  [DD/MM/AAAA]  [hodômetro anterior]  km_intervalo
-//   hodômetro_acum  falta_p_troca  [*]  [dias]  peca_cod-peca_nome  capacidade
-const REGEX_COMP =
-  /^(\d+)-([A-Z0-9/\.\s]+?)\s+(?:(\d{2}\/\d{2}\/\d{4})\s+)?(?:(\d[\d\.\,]*)\s+)?(\d[\d\.\,]*)\s+(\d[\d\.\,]*)\s+(-?\d[\d\.\,]*)\s+(?:(\*)\s+)?(?:(\d+)\s+)?(\d+)-(.+?)\s+([\d\.\,]+)\s*$/;
+// ---------------- padrões ----------------
 
-// Regex de linha "cabeçalho de frota" — começa com dígito colado a texto
-// maiúsculo. O primeiro compartimento vem no fim da mesma linha.
-const REGEX_FROTA_HEAD = /^(\d+)([A-Z][A-Z0-9 \/\-\.]+?)\s+(\d+-.+)$/;
+// Compartimento: número curto (1-3 dígitos) + hífen + letra(s). Ex: "1-CARTER",
+// "14-CAIXA DE TRAÇÃO", "68-FILTRO A/C INTERNO". Comprimento razoável limita
+// falsos positivos.
+const REGEX_COMPARTIMENTO = /\b(\d{1,3})-([A-ZÀ-Ú][A-ZÀ-Ú0-9/\.\s]{2,40}?)(?=\s{2,}|\s+\d|\s*$|\t)/;
 
-// Linhas de header/rodapé que devem ser puladas
-const REGEX_HEADER_LINE =
-  /(GRISOLINO|FAZENDA|ORINDIUVA|Posi.+o Lubrifica|COMPARTIMENTO|F R O T A|TIPO DE GARANTIA|P.gina\s+N)/i;
+// Peça: mesmo padrão mas com nome mais longo — geralmente OLEO, FILTRO, etc.
+// Palavras-chave típicas ajudam a distinguir de compartimento. Nome mínimo 6
+// chars pra evitar colisão.
+const REGEX_PECA =
+  /\b(\d{2,6})-((?:OLEO|FILTRO|CORREIA|GRAXA|FLUIDO|LIQUIDO|LUBRIF|COMBUS|RACOR|SINT|MINERAL)[A-Z0-9/\.\s\-]{2,50}?)(?=\s{2,}|\s+\d|\s*$|\t)/i;
 
-function parseLinhaCompartimento(
-  linha: string,
-  frotaNumero: string,
-  frotaModelo: string | null
-): LinhaManutencao | null {
-  const m = REGEX_COMP.exec(linha);
-  if (!m) return null;
-  const falta = m[7];
-  const marcador = m[8];
-  const vencido = marcador === "*" || falta.startsWith("-");
-  return {
-    frotaNumero,
-    frotaModelo,
-    compartimentoCodigo: m[1],
-    compartimentoTipo: m[2].trim(),
-    ultimaTrocaData: m[3] || null,
-    ultimaTrocaHodometro: m[4] || null,
-    kmIntervalo: m[5] || null,
-    hodometroAtual: m[6] || null,
-    kmFaltando: falta || null,
-    diasFaltando: m[9] || null,
-    pecaCodigo: m[10] || null,
-    pecaNome: (m[11] || "").trim() || null,
-    capacidade: m[12] || null,
-    vencido,
-  };
+const REGEX_DATA = /\b(\d{2}\/\d{2}\/\d{4})\b/;
+const REGEX_VENCIDO = /\*/;
+// Números com casas decimais (.NNN ou ,N) — hodômetros / km / capacidades.
+// Aceita negativo pra km_faltando.
+const REGEX_NUMEROS = /-?\d[\d\.]{0,15}(?:,\d{1,3})?/g;
+
+// Linhas de cabeçalho/rodapé pra ignorar
+const REGEX_LIXO =
+  /^(GRISOLINO|FAZENDA|ORINDIUVA|Posi.+o Lubrific|COMPARTIMENTO|F\s?R\s?O\s?T\s?A|TIPO DE GARANTIA|ÚLTIMA TROCA|HOD[OÔ]M|DATA P\/TROCA|DIAS|FALT|ÓLEO RECOMENDADO|MAX|CAPAC|--\s*\d+ of \d+|Página|\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2})\s*$/i;
+
+// ---------------- helpers ----------------
+
+function limparToken(s: string): string {
+  return s.trim().replace(/\s+/g, " ");
+}
+
+function extrairTodosNumeros(linha: string): string[] {
+  const encontrados: string[] = [];
+  const re = new RegExp(REGEX_NUMEROS.source, "g");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(linha)) !== null) {
+    encontrados.push(m[0]);
+  }
+  return encontrados;
+}
+
+function extrairData(linha: string): string | null {
+  const m = REGEX_DATA.exec(linha);
+  return m ? m[1] : null;
 }
 
 /**
- * Recebe o TEXTO completo extraído do PDF (por qualquer engine) e devolve
- * a lista de compartimentos parseados.
+ * Tenta identificar o modelo + número da frota, que aparece só na PRIMEIRA
+ * linha da frota. Formato observado: um bloco de texto tipo
+ * "TOYOTA HILUX CD 4X4 FO 1" ou "MARCOPOLO VOLARE V8L 7" no meio da linha,
+ * antes do último número (capacidade).
+ * Retorna [modelo, numeroFrota] ou null se não achar.
  */
+function extrairFrotaInline(linha: string): { modelo: string; numero: string } | null {
+  // Procura por padrão: texto maiúsculo (marca+modelo) seguido de espaços e
+  // um número inteiro isolado (frota).
+  // Ex: "...MOTO	429.899,0 436.000	TOYOTA HILUX CD 4X4 FO	1 9,00"
+  //     "...MB SPRINTER 416-CDI FB	T	26 ..."
+  const m = /\t?([A-ZÀ-Ú][A-ZÀ-Ú0-9\s\-/\.]{4,60}?)\s+(\d{1,5})\s+(?:-?\d[\d\.,]*\s*)?$/.exec(
+    linha
+  );
+  if (!m) return null;
+  const modelo = limparToken(m[1]);
+  const numero = m[2];
+  // Descarta se o "modelo" for na verdade uma peça (começa com OLEO/FILTRO)
+  if (/^(OLEO|FILTRO|CORREIA|GRAXA|FLUIDO|LIQUIDO|LUBRIF|COMBUS|RACOR|SINT)/i.test(modelo)) {
+    return null;
+  }
+  return { modelo, numero };
+}
+
+/**
+ * Parse de uma única linha, se reconhecida como linha de compartimento.
+ * `frotaInline` é setada quando essa linha é a PRIMEIRA da frota (tem
+ * modelo+número junto). Nos demais casos, o consumidor propaga a última
+ * frota vista.
+ */
+function parseLinha(linha: string): {
+  registro: Omit<LinhaManutencao, "frotaNumero" | "frotaModelo"> | null;
+  frotaInline: { modelo: string; numero: string } | null;
+} {
+  const norm = linha.replace(/\t+/g, " ").replace(/\s+/g, " ").trim();
+  if (!norm || REGEX_LIXO.test(norm)) {
+    return { registro: null, frotaInline: null };
+  }
+
+  // Uma linha de compartimento tem AO MENOS: 1 comp + 1 peça (ou só comp) +
+  // 3 números. Detecta compartimento; se não achar, ignora.
+  const mComp = REGEX_COMPARTIMENTO.exec(norm);
+  if (!mComp) return { registro: null, frotaInline: null };
+
+  const compCodigo = mComp[1];
+  const compTipo = limparToken(mComp[2]);
+
+  // Extrai peça REMOVENDO primeiro a substring do compartimento — evita casar
+  // com o próprio compartimento quando ele começa com "FILTRO"/"OLEO" (ex.:
+  // "37-FILTRO COMBUSTIVEL" também casaria com REGEX_PECA senão).
+  let pecaCodigo: string | null = null;
+  let pecaNome: string | null = null;
+  const normSemComp =
+    norm.slice(0, mComp.index) + " " + norm.slice(mComp.index + mComp[0].length);
+  const mPeca = REGEX_PECA.exec(normSemComp);
+  if (mPeca) {
+    pecaCodigo = mPeca[1];
+    pecaNome = limparToken(mPeca[2]);
+  }
+
+  const data = extrairData(linha);
+  const vencido = REGEX_VENCIDO.test(norm);
+  const numeros = extrairTodosNumeros(norm);
+
+  // Estratégia:
+  //   - km_faltando: menor número em módulo? não. É o que tem sinal (se
+  //     vencido) OU um dos números que NÃO é hodômetro cheio.
+  //   - hodometro_atual: número maior repetido em todas as linhas da mesma
+  //     frota — mas aqui parseamos linha a linha; heurística: número que
+  //     tem "," (parte decimal) é geralmente o hodôm_acum.
+  //   - km_intervalo: número redondo pequeno (10.000, 20.000, 30.000,
+  //     40.000, 50.000, 80.000).
+  //   - hodometro_ultima_troca: número inteiro logo antes/depois da data.
+  //   - capacidade: último número da linha, com casa decimal pequena (0,00 a 20,00).
+
+  // Números "com vírgula" — geralmente hodômetro atual e falta p/troca
+  const comVirgula = numeros.filter((n) => n.includes(","));
+  // Números inteiros redondos típicos de intervalo
+  const intervalosTipicos = ["10.000", "20.000", "30.000", "40.000", "50.000", "60.000", "80.000", "100.000"];
+  const kmIntervalo =
+    numeros.find((n) => intervalosTipicos.includes(n)) ?? null;
+
+  // km_faltando: negativo => vencido; senão o valor com vírgula que não é
+  // o hodômetro_atual.
+  let kmFaltando: string | null = null;
+  const negativo = numeros.find((n) => n.startsWith("-"));
+  if (negativo) {
+    kmFaltando = negativo;
+  } else {
+    // pega o menor dos "com vírgula" (o hodôm atual é o maior)
+    if (comVirgula.length >= 2) {
+      const ordenados = [...comVirgula].sort(
+        (a, b) => parseNumeroBR(a) - parseNumeroBR(b)
+      );
+      kmFaltando = ordenados[0];
+    } else if (comVirgula.length === 1) {
+      kmFaltando = comVirgula[0];
+    }
+  }
+
+  // hodometro_atual: maior número com vírgula
+  let hodometroAtual: string | null = null;
+  if (comVirgula.length > 0) {
+    hodometroAtual = comVirgula.reduce((a, b) =>
+      parseNumeroBR(a) > parseNumeroBR(b) ? a : b
+    );
+  }
+
+  // ultimaTrocaHodometro: número inteiro sem casas decimais, MAIOR (>10000)
+  // geralmente. Fica próximo da data.
+  let ultimaTrocaHodometro: string | null = null;
+  const inteirosGrandes = numeros.filter(
+    (n) => !n.includes(",") && !n.startsWith("-") && parseNumeroBR(n) >= 1000
+  );
+  if (inteirosGrandes.length > 0) {
+    // O km_intervalo já foi excluído; pega o restante
+    const candidatos = inteirosGrandes.filter((n) => n !== kmIntervalo);
+    if (candidatos.length > 0) {
+      // O primeiro geralmente é o hodôm da última troca
+      ultimaTrocaHodometro = candidatos[0];
+    }
+  }
+
+  // Dias faltando: número inteiro pequeno (1-9999) que não é hodôm nem intervalo
+  let diasFaltando: string | null = null;
+  const inteirosPequenos = numeros.filter(
+    (n) => !n.includes(",") && !n.startsWith("-") && parseNumeroBR(n) < 1000 && parseNumeroBR(n) >= 10
+  );
+  const diasCandidatos = inteirosPequenos.filter((n) => n !== kmIntervalo);
+  if (diasCandidatos.length > 0) {
+    diasFaltando = diasCandidatos[0];
+  }
+
+  // Capacidade: último número pequeno com vírgula e uma casa decimal (ex.: 9,00)
+  let capacidade: string | null = null;
+  for (let i = numeros.length - 1; i >= 0; i--) {
+    const n = numeros[i];
+    if (n.includes(",") && parseNumeroBR(n) < 100 && n !== hodometroAtual) {
+      capacidade = n;
+      break;
+    }
+  }
+
+  const frotaInline = extrairFrotaInline(linha);
+
+  return {
+    registro: {
+      compartimentoCodigo: compCodigo,
+      compartimentoTipo: compTipo,
+      ultimaTrocaData: data,
+      ultimaTrocaHodometro,
+      kmIntervalo,
+      hodometroAtual,
+      kmFaltando,
+      diasFaltando,
+      pecaCodigo,
+      pecaNome,
+      capacidade,
+      vencido,
+    },
+    frotaInline,
+  };
+}
+
+function parseNumeroBR(s: string): number {
+  const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+// ---------------- API pública ----------------
+
 export function parsearTextoRelatorio(texto: string): {
   registros: LinhaManutencao[];
   frotasDistintas: number;
@@ -84,35 +255,17 @@ export function parsearTextoRelatorio(texto: string): {
 
   const linhas = texto.split(/\r?\n/);
   for (const raw of linhas) {
-    const linha = raw.trim();
-    if (!linha) continue;
-    if (REGEX_HEADER_LINE.test(linha)) continue;
-
-    // Linha começa com nova frota?
-    const mFrota = REGEX_FROTA_HEAD.exec(linha);
-    if (mFrota) {
-      frotaAtual = mFrota[1];
-      // Separa modelo do 1º compartimento
-      const resto = (mFrota[2].trim() + " " + mFrota[3]).trim();
-      const mSep = /^(.+?)\s+(\d+-[A-Z0-9\/\.\s].+)$/.exec(resto);
-      if (mSep) {
-        modeloAtual = mSep[1].trim();
-        const reg = parseLinhaCompartimento(
-          mSep[2],
-          frotaAtual,
-          modeloAtual
-        );
-        if (reg) registros.push(reg);
-      } else {
-        modeloAtual = null;
-      }
-      continue;
+    const { registro, frotaInline } = parseLinha(raw);
+    if (frotaInline) {
+      frotaAtual = frotaInline.numero;
+      modeloAtual = frotaInline.modelo;
     }
-
-    // Linha de compartimento continuando a frota atual
-    if (frotaAtual) {
-      const reg = parseLinhaCompartimento(linha, frotaAtual, modeloAtual);
-      if (reg) registros.push(reg);
+    if (registro && frotaAtual) {
+      registros.push({
+        frotaNumero: frotaAtual,
+        frotaModelo: modeloAtual,
+        ...registro,
+      });
     }
   }
 
