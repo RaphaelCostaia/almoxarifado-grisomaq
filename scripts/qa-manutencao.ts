@@ -25,16 +25,29 @@ function assert(nome: string, ok: boolean, detalhe: string) {
 }
 
 async function extrairTextoPdf(path: string): Promise<string> {
-  const mod: any = await import("pdf-parse");
-  const PDFParse = mod.PDFParse ?? mod.default?.PDFParse;
+  const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const buf = readFileSync(path);
-  const parser = new PDFParse({ data: new Uint8Array(buf) });
-  try {
-    const r = await parser.getText();
-    return String(r?.text ?? "");
-  } finally {
-    await parser.destroy().catch(() => {});
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(buf),
+    disableFontFace: true,
+    isEvalSupported: false,
+    useSystemFonts: false,
+    verbosity: 0,
+    disableWorker: true,
+  }).promise;
+  const partes: string[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    const itens = (content.items as any[])
+      .filter((it) => it && typeof it.str === "string" && it.transform)
+      .map((it) => ({ x: it.transform[4], y: it.transform[5], str: it.str }))
+      .sort((a: any, b: any) => (b.y - a.y) * 1000 + (a.x - b.x));
+    partes.push(itens.map((t: any) => t.str).join(" "));
+    page.cleanup();
   }
+  await doc.destroy().catch(() => {});
+  return partes.join("\n");
 }
 
 async function main() {
@@ -51,10 +64,10 @@ async function main() {
   let texto = "";
   try {
     texto = await extrairTextoPdf(path);
-    assert("A1. pdf-parse v2 extrai texto do PDF real", texto.length > 1000,
+    assert("A1. pdfjs-dist extrai texto do PDF real", texto.length > 1000,
       `${texto.length} chars extraídos de ${path}`);
   } catch (e: any) {
-    assert("A1. pdf-parse v2 extrai texto", false, `erro: ${e.message}`);
+    assert("A1. pdfjs-dist extrai texto", false, `erro: ${e.message}`);
     return relatar();
   }
 

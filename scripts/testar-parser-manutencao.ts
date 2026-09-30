@@ -5,13 +5,44 @@ import { parsearTextoRelatorio } from "../lib/parser-manutencao-gmais";
 
 async function main() {
   const path = process.argv[2] || "C:/Users/User/Downloads/Relatorios_GMAIS_848.PDF.pdf";
-  const mod: any = await import("pdf-parse");
-  const PDFParse = mod.PDFParse ?? mod.default?.PDFParse;
+  const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const buf = readFileSync(path);
-  const parser = new PDFParse({ data: new Uint8Array(buf) });
-  const res = await parser.getText();
-  await parser.destroy().catch(() => {});
-  const texto = String(res?.text ?? "");
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(buf),
+    disableFontFace: true,
+    isEvalSupported: false,
+    useSystemFonts: false,
+    verbosity: 0,
+    disableWorker: true,
+  }).promise;
+  const partes: string[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    const linhasMap = new Map<number, { x: number; str: string }[]>();
+    for (const it of content.items as any[]) {
+      if (!it || typeof it.str !== "string") continue;
+      const t = it.transform as number[] | undefined;
+      if (!t || t.length < 6) continue;
+      const y = Math.round(t[5]);
+      const bucket = linhasMap.get(y) ?? [];
+      bucket.push({ x: t[4], str: it.str });
+      linhasMap.set(y, bucket);
+    }
+    const ys = Array.from(linhasMap.keys()).sort((a, b) => b - a);
+    for (const y of ys) {
+      partes.push(
+        linhasMap
+          .get(y)!
+          .sort((a, b) => a.x - b.x)
+          .map((t) => t.str)
+          .join(" "),
+      );
+    }
+    page.cleanup();
+  }
+  await doc.destroy().catch(() => {});
+  const texto = partes.join("\n");
   console.log(`Bytes: ${buf.length}, chars: ${texto.length}`);
 
   const r = parsearTextoRelatorio(texto);

@@ -73,28 +73,45 @@ function extrairData(linha: string): string | null {
 }
 
 /**
- * Tenta identificar o modelo + número da frota, que aparece só na PRIMEIRA
- * linha da frota. Formato observado: um bloco de texto tipo
- * "TOYOTA HILUX CD 4X4 FO 1" ou "MARCOPOLO VOLARE V8L 7" no meio da linha,
- * antes do último número (capacidade).
- * Retorna [modelo, numeroFrota] ou null se não achar.
+ * Tenta identificar o modelo + número da frota. Aparece só no primeiro
+ * compartimento (`1-CARTER` ou o primeiro listado) de cada frota, em 2
+ * formatos observados:
+ *
+ *   a) "...NUM MARCA MODELO 01/09/2026 ..." (número da frota antes do modelo,
+ *      logo depois do bloco de compartimento). Ex.:
+ *      "1-CARTER 1 TOYOTA HILUX CD 4X4 FO 01/09/2026 ..."
+ *
+ *   b) "...MARCA MODELO NUM 9,00" (número da frota no fim, antes da
+ *      capacidade). Ex.: "...OLEO SHELL 436.000 TOYOTA HILUX FO 1 9,00"
+ *
+ * Retorna [modelo, numeroFrota] ou null se não reconhecer.
  */
 function extrairFrotaInline(linha: string): { modelo: string; numero: string } | null {
-  // Procura por padrão: texto maiúsculo (marca+modelo) seguido de espaços e
-  // um número inteiro isolado (frota).
-  // Ex: "...MOTO	429.899,0 436.000	TOYOTA HILUX CD 4X4 FO	1 9,00"
-  //     "...MB SPRINTER 416-CDI FB	T	26 ..."
-  const m = /\t?([A-ZÀ-Ú][A-ZÀ-Ú0-9\s\-/\.]{4,60}?)\s+(\d{1,5})\s+(?:-?\d[\d\.,]*\s*)?$/.exec(
-    linha
+  // Formato observado: depois de "NN-TIPO", vem "MODELO NUM_FROTA DATA ..."
+  // Ex.: "1-CARTER TOYOTA HILUX CD 4X4 FO 1 01/09/2026 426.000 ..."
+  //      "1-CARTER MB SPRINTER 416-CDI FBT 26 03/09/2026 ..."
+  // Estratégia: extrai o texto entre o compartimento e o próximo NÚMERO
+  // seguido de DATA. Esse texto é "MODELO NUM_FROTA".
+  const semComp = linha.replace(
+    /^\d{1,3}-[A-ZÀ-Ú][A-ZÀ-Ú0-9/\.\s]{2,40}?\s+/,
+    "",
   );
-  if (!m) return null;
-  const modelo = limparToken(m[1]);
-  const numero = m[2];
-  // Descarta se o "modelo" for na verdade uma peça (começa com OLEO/FILTRO)
-  if (/^(OLEO|FILTRO|CORREIA|GRAXA|FLUIDO|LIQUIDO|LUBRIF|COMBUS|RACOR|SINT)/i.test(modelo)) {
-    return null;
+  // Captura "MODELO NUM" antes de "DATA" (dd/mm/aaaa)
+  const m = /^([A-ZÀ-Ú][A-ZÀ-Ú0-9\s\-/\.]{2,60}?)\s+(\d{1,5})\s+\d{2}\/\d{2}\/\d{4}/.exec(
+    semComp,
+  );
+  if (m) {
+    const modelo = limparToken(m[1]);
+    const numero = m[2];
+    if (
+      !/^(OLEO|FILTRO|CORREIA|GRAXA|FLUIDO|LIQUIDO|LUBRIF|COMBUS|RACOR|SINT|SEMI|MINERAL|SHELL|SAE|API|GL|MB|HD|CT)/i.test(
+        modelo,
+      )
+    ) {
+      return { modelo, numero };
+    }
   }
-  return { modelo, numero };
+  return null;
 }
 
 /**
@@ -253,9 +270,15 @@ export function parsearTextoRelatorio(texto: string): {
   let frotaAtual: string | null = null;
   let modeloAtual: string | null = null;
 
-  const linhas = texto.split(/\r?\n/);
-  for (const raw of linhas) {
-    const { registro, frotaInline } = parseLinha(raw);
+  // Divide o texto (que agora pode ser 1 string por página) em blocos —
+  // cada bloco começa com padrão " NN-TIPO" (compartimento).
+  const blocos = texto
+    .split(/(?=\s\d{1,3}-[A-ZÀ-Ú])/)
+    .map((s) => s.trim())
+    .filter((s) => /^\d{1,3}-[A-ZÀ-Ú]/.test(s));
+
+  for (const bloco of blocos) {
+    const { registro, frotaInline } = parseLinha(bloco);
     if (frotaInline) {
       frotaAtual = frotaInline.numero;
       modeloAtual = frotaInline.modelo;

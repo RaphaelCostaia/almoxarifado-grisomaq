@@ -10,26 +10,64 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// pdf-parse v2 exporta a classe PDFParse. Recebe {data: Uint8Array} e
-// devolve TextResult com .text agregado. Sempre chamar destroy() no fim
-// pra liberar o worker do pdf.js.
+// pdfjs-dist legacy build — 100% JavaScript puro, sem dependência nativa
+// (canvas, Cairo, Pango). Roda em Node.js Alpine sem problema.
+// Extrai só o texto (getTextContent), não renderiza imagens.
 async function extrairTextoPdf(buffer: Buffer): Promise<string> {
-  const mod: any = await import("pdf-parse");
-  const PDFParse = mod.PDFParse ?? mod.default?.PDFParse;
-  if (!PDFParse) {
-    throw new Error("pdf-parse: PDFParse não encontrado no módulo");
+  // Import dinâmico do build legacy CommonJS
+  const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // Aponta pro worker do próprio pacote (arquivo .mjs empacotado). O legacy
+  // build funciona bem com esse caminho absoluto (via require.resolve).
+  if (pdfjs.GlobalWorkerOptions) {
+    try {
+      // require.resolve dá o caminho real do worker no filesystem em runtime.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const req = eval("require") as NodeRequire;
+      pdfjs.GlobalWorkerOptions.workerSrc = req.resolve(
+        "pdfjs-dist/legacy/build/pdf.worker.mjs",
+      );
+    } catch {
+      /* segue sem worker se falhar */
+    }
   }
-  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    disableFontFace: true,
+    isEvalSupported: false,
+    useSystemFonts: false,
+    verbosity: 0,
+    // isEvalSupported=false + disableWorker=true força pdfjs a rodar tudo
+    // na thread principal (mais lento mas sem worker file loading issues)
+    disableWorker: true,
+  });
+  const doc = await loadingTask.promise;
+  const partes: string[] = [];
   try {
-    const r = await parser.getText();
-    return String(r?.text ?? "");
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      // Ordena todos os itens da página por Y desc, depois X asc — reconstrói
+      // a ordem visual. Junta tudo numa string por página; o parser vai
+      // segmentar por regex de compartimento.
+      const itens = (content.items as any[])
+        .filter((it) => it && typeof it.str === "string" && it.transform)
+        .map((it) => ({
+          x: it.transform[4] as number,
+          y: it.transform[5] as number,
+          str: it.str as string,
+        }))
+        .sort((a, b) => (b.y - a.y) * 1000 + (a.x - b.x));
+      partes.push(itens.map((t) => t.str).join(" "));
+      page.cleanup();
+    }
   } finally {
     try {
-      await parser.destroy();
+      await doc.destroy();
     } catch {
       /* ignore */
     }
   }
+  return partes.join("\n");
 }
 
 export async function POST(req: NextRequest) {

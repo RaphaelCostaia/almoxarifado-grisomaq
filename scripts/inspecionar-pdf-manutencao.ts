@@ -3,13 +3,25 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 async function main() {
   const path = process.argv[2] || "C:/Users/User/Downloads/Relatorios_GMAIS_848.PDF.pdf";
-  const mod: any = await import("pdf-parse");
-  const PDFParse = mod.PDFParse ?? mod.default?.PDFParse;
+  const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const buf = readFileSync(path);
-  const parser = new PDFParse({ data: new Uint8Array(buf) });
-  const res = await parser.getText();
-  await parser.destroy().catch(() => {});
-  const t = String(res?.text ?? "");
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(buf),
+    disableFontFace: true,
+    isEvalSupported: false,
+    useSystemFonts: false,
+    verbosity: 0,
+    disableWorker: true,
+  }).promise;
+  const partes: string[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    partes.push((content.items as any[]).map((it) => it.str || "").join(" "));
+    page.cleanup();
+  }
+  await doc.destroy().catch(() => {});
+  const t = partes.join("\n");
   writeFileSync("scripts/texto-extraido.txt", t, "utf-8");
   const linhas = t.split(/\r?\n/);
   console.log(`Total de linhas: ${linhas.length}`);
