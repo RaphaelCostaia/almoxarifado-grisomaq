@@ -96,7 +96,7 @@ export function PedidosBoard() {
   if (ate) params.set("ate", ate);
 
   const { data, isLoading, mutate } = useSWR<{
-    pedidos: Pedido[];
+    pedidos: (Pedido & { qtdItens?: number })[];
     frotas: string[];
     locais: string[];
   }>(`/api/pedidos?${params.toString()}`, fetcher, {
@@ -163,7 +163,7 @@ export function PedidosBoard() {
   }, [pedidos, novosUrgentes, seenIds.size]);
 
   const porStatus = useMemo(() => {
-    const map = new Map<Pedido["status"], Pedido[]>();
+    const map = new Map<Pedido["status"], (Pedido & { qtdItens?: number })[]>();
     for (const c of COLUNAS) map.set(c.key, []);
     for (const p of pedidos) map.get(p.status)?.push(p);
     return map;

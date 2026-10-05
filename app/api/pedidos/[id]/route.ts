@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import {
   pedidos,
   pedidoEventos,
+  pedidoItens,
   pecas,
   movimentacoes,
   compras,
@@ -66,6 +67,15 @@ export async function GET(
     peca = p[0] ?? null;
   }
 
+  // Itens do pedido (um pedido pode ter N peças). Pedidos antigos foram
+  // backfilled no boot (apply-constraints) com 1 linha espelhando os campos
+  // achatados em `pedidos`.
+  const itens = await db
+    .select()
+    .from(pedidoItens)
+    .where(eq(pedidoItens.pedidoId, id))
+    .orderBy(asc(pedidoItens.id));
+
   // Compras vinculadas a este pedido (mais recente primeiro)
   const comprasVinculadas = await db
     .select()
@@ -89,6 +99,7 @@ export async function GET(
     pedido: pedido[0],
     eventos,
     peca,
+    itens,
     compras: comprasSeguras,
   });
 }
@@ -180,24 +191,48 @@ export async function PATCH(
       texto: `Status alterado para: ${STATUS_PEDIDO_LABELS[status]}.`,
     });
 
-    // Baixa automática de estoque ao entregar
-    if (status === "entregue" && atual.pecaId) {
-      await db.transaction(async (tx) => {
-        await tx
-          .update(pecas)
-          .set({
-            saldo: sql`GREATEST(0, ${pecas.saldo} - ${atual.quantidade})`,
-          })
-          .where(eq(pecas.id, atual.pecaId as number));
-        await tx.insert(movimentacoes).values({
-          pecaId: atual.pecaId as number,
-          tipo: "saida",
-          quantidade: atual.quantidade,
-          motivo: `Entrega pedido #${atual.id}`,
-          pedidoId: atual.id,
-          autor,
+    // Baixa automática de estoque ao entregar — itera sobre pedido_itens
+    // (um pedido pode ter N peças). Se a tabela estiver vazia (edge case:
+    // pedido criado antes do backfill), cai no caminho legado usando os
+    // campos achatados do pedido.
+    if (status === "entregue") {
+      const itensDoPedido = await db
+        .select()
+        .from(pedidoItens)
+        .where(eq(pedidoItens.pedidoId, atual.id));
+
+      const paraBaixar =
+        itensDoPedido.length > 0
+          ? itensDoPedido
+              .filter((it) => it.pecaId && it.quantidade > 0)
+              .map((it) => ({
+                pecaId: it.pecaId as number,
+                quantidade: it.quantidade,
+              }))
+          : atual.pecaId
+            ? [{ pecaId: atual.pecaId as number, quantidade: atual.quantidade }]
+            : [];
+
+      if (paraBaixar.length > 0) {
+        await db.transaction(async (tx) => {
+          for (const item of paraBaixar) {
+            await tx
+              .update(pecas)
+              .set({
+                saldo: sql`GREATEST(0, ${pecas.saldo} - ${item.quantidade})`,
+              })
+              .where(eq(pecas.id, item.pecaId));
+            await tx.insert(movimentacoes).values({
+              pecaId: item.pecaId,
+              tipo: "saida",
+              quantidade: item.quantidade,
+              motivo: `Entrega pedido #${atual.id}`,
+              pedidoId: atual.id,
+              autor,
+            });
+          }
         });
-      });
+      }
     }
   }
 

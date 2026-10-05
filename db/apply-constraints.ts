@@ -353,6 +353,49 @@ async function main() {
       ON manutencao_ordens (deletado_em);
   `);
 
+  // ================================================================
+  // MÓDULO PEDIDOS — N peças por pedido (tabela pedido_itens aditiva)
+  // ================================================================
+  // Zero destrutivo: só CREATE/ALTER com IF NOT EXISTS. Pedidos existentes
+  // são backfilled em 1 item cada, idempotente (não duplica se já backfilled).
+  console.log("[constraints] Criando tabela pedido_itens (se faltar)…");
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS pedido_itens (
+      id serial PRIMARY KEY,
+      pedido_id integer NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+      peca_id integer REFERENCES pecas(id) ON DELETE SET NULL,
+      descricao text NOT NULL,
+      codigo_peca varchar(64),
+      fabricante varchar(128),
+      quantidade integer NOT NULL DEFAULT 1,
+      unidade varchar(16) NOT NULL DEFAULT 'un',
+      criado_em timestamp with time zone NOT NULL DEFAULT now()
+    );
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS pedido_itens_pedido_idx
+      ON pedido_itens (pedido_id);
+  `);
+
+  console.log("[constraints] Adicionando compras.pedido_item_id (se faltar)…");
+  await db.execute(sql`
+    ALTER TABLE compras
+    ADD COLUMN IF NOT EXISTS pedido_item_id integer
+      REFERENCES pedido_itens(id) ON DELETE SET NULL;
+  `);
+
+  console.log("[constraints] Backfill de pedido_itens (1 item por pedido antigo)…");
+  const backfill = await db.execute(sql`
+    INSERT INTO pedido_itens (pedido_id, peca_id, descricao, codigo_peca, fabricante, quantidade, unidade, criado_em)
+    SELECT p.id, p.peca_id, p.descricao, p.codigo_peca, p.fabricante, p.quantidade, p.unidade, p.criado_em
+    FROM pedidos p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM pedido_itens pi WHERE pi.pedido_id = p.id
+    )
+    RETURNING id;
+  `);
+  console.log(`[constraints]   backfilled ${(backfill as any).length ?? 0} pedidos`);
+
   console.log("[constraints] ✓ Concluído.");
   process.exit(0);
 }

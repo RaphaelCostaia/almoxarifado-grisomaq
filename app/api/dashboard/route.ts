@@ -23,12 +23,16 @@ export async function GET() {
     GROUP BY status
   `);
 
+  // Agrupa por item (pedido_itens) — pedido com N peças agora conta cada peça.
+  // Pedidos antigos foram backfilled com 1 linha, então o resultado é
+  // compatível com o comportamento anterior pra pedidos de 1 peça.
   const topPecas = await db.execute(sql`
-    SELECT descricao, COUNT(*)::int as c
-    FROM pedidos
-    WHERE deletado_em IS NULL
-      AND criado_em >= now() - interval '30 days'
-    GROUP BY descricao
+    SELECT pi.descricao, COUNT(*)::int as c
+    FROM pedido_itens pi
+    INNER JOIN pedidos p ON p.id = pi.pedido_id
+    WHERE p.deletado_em IS NULL
+      AND p.criado_em >= now() - interval '30 days'
+    GROUP BY pi.descricao
     ORDER BY c DESC
     LIMIT 8
   `);

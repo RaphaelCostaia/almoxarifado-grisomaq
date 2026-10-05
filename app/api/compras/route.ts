@@ -12,6 +12,10 @@ export const dynamic = "force-dynamic";
 
 const NovaCompraSchema = z.object({
   pedidoId: z.coerce.number().int().optional().nullable(),
+  // Identifica qual item do pedido origina esta compra (quando o pedido
+  // tem várias peças). Opcional — compras independentes ou de pedidos antigos
+  // (1 peça) deixam NULL.
+  pedidoItemId: z.coerce.number().int().optional().nullable(),
   pecaId: z.coerce.number().int().optional().nullable(),
   descricao: z.string().min(1),
   quantidade: z.coerce.number().int().min(1),
@@ -111,6 +115,7 @@ export async function POST(req: NextRequest) {
     .insert(compras)
     .values({
       pedidoId: d.pedidoId ?? null,
+      pedidoItemId: d.pedidoItemId ?? null,
       pecaId: d.pecaId ?? null,
       descricao: d.descricao,
       quantidade: d.quantidade,

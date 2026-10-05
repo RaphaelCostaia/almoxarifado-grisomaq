@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { and, desc, gte, isNull, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "@/db/client";
-import { pedidos, STATUS_PEDIDO_LABELS } from "@/db/schema";
+import { pedidos, pedidoItens, STATUS_PEDIDO_LABELS } from "@/db/schema";
 import { toCSV } from "@/lib/csv";
 import { formatBR } from "@/lib/date";
 import { exigirSessaoApi } from "@/lib/api-auth";
@@ -27,18 +27,34 @@ export async function GET(req: NextRequest) {
     .from(pedidos)
     .where(and(...conds))
     .orderBy(desc(pedidos.criadoEm));
-  const csv = toCSV(
-    rows.map((r) => ({
+
+  // Busca todos os itens dos pedidos selecionados numa consulta só.
+  const idsPedido = rows.map((r) => r.id);
+  const itens = idsPedido.length
+    ? await db
+        .select()
+        .from(pedidoItens)
+        .where(inArray(pedidoItens.pedidoId, idsPedido))
+        .orderBy(asc(pedidoItens.id))
+    : [];
+  const itensPorPedido = new Map<number, typeof itens>();
+  for (const it of itens) {
+    const arr = itensPorPedido.get(it.pedidoId) ?? [];
+    arr.push(it);
+    itensPorPedido.set(it.pedidoId, arr);
+  }
+
+  // Emite 1 linha CSV por item do pedido. Pedidos sem itens (edge case) caem
+  // nos campos achatados.
+  const linhas: Record<string, any>[] = [];
+  for (const r of rows) {
+    const its = itensPorPedido.get(r.id) ?? [];
+    const base = {
       ID: r.id,
       Frota: r.frota,
       Local: r.local ?? "",
       Modelo: r.modeloVeiculo ?? "",
       Ano: r.anoVeiculo ?? "",
-      Descricao: r.descricao,
-      CodigoPeca: r.codigoPeca ?? "",
-      Fabricante: r.fabricante ?? "",
-      Quantidade: r.quantidade,
-      Unidade: r.unidade,
       Motivo: r.motivo,
       Solicitante: r.solicitante,
       Prioridade: r.prioridade,
@@ -47,17 +63,41 @@ export async function GET(req: NextRequest) {
       AtualizadoEm: formatBR(r.atualizadoEm),
       EntregueEm: r.entregueEm ? formatBR(r.entregueEm) : "",
       Observacoes: r.observacoes ?? "",
-    }))
-  );
+    };
+    if (its.length === 0) {
+      linhas.push({
+        ...base,
+        Item: 1,
+        Descricao: r.descricao,
+        CodigoPeca: r.codigoPeca ?? "",
+        Fabricante: r.fabricante ?? "",
+        Quantidade: r.quantidade,
+        Unidade: r.unidade,
+      });
+    } else {
+      its.forEach((it, idx) => {
+        linhas.push({
+          ...base,
+          Item: idx + 1,
+          Descricao: it.descricao,
+          CodigoPeca: it.codigoPeca ?? "",
+          Fabricante: it.fabricante ?? "",
+          Quantidade: it.quantidade,
+          Unidade: it.unidade,
+        });
+      });
+    }
+  }
+  const csv = toCSV(linhas);
   await auditar({
     req,
     sessao: auth.sessao,
     acao: "export_csv",
     entidade: "export",
-    resumo: `Export CSV de pedidos: ${rows.length} linhas${
+    resumo: `Export CSV de pedidos: ${rows.length} pedidos / ${linhas.length} linhas${
       de || ate ? ` (${de ?? "…"} → ${ate ?? "hoje"})` : ""
     }.`,
-    diff: { linhas: rows.length, de, ate },
+    diff: { pedidos: rows.length, linhas: linhas.length, de, ate },
   });
 
   const sufixo = de || ate ? `-${de ?? "inicio"}-${ate ?? "hoje"}` : "";

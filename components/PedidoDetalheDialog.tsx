@@ -10,6 +10,7 @@ import {
   STATUS_COMPRA_LABELS,
   type Pedido,
   type PedidoEvento,
+  type PedidoItem,
   type Peca,
   type Compra,
 } from "@/db/schema";
@@ -17,7 +18,7 @@ import { formatBR } from "@/lib/date";
 import { formatSaldo, toNum as toNumSaldo } from "@/lib/formatSaldo";
 import { useCurrentUserName } from "@/lib/user";
 import { useIsAdmin } from "./SessionProvider";
-import { Modal } from "./NovoPedidoDialog";
+import { Modal, type PedidoPrefill } from "./NovoPedidoDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -25,21 +26,7 @@ type Props = {
   id: number;
   onClose: () => void;
   onChanged: () => void;
-  onDuplicar?: (dados: {
-    frota: string;
-    local?: string;
-    modeloVeiculo?: string;
-    anoVeiculo?: string;
-    codigoPeca?: string;
-    fabricante?: string;
-    descricao: string;
-    quantidade: number;
-    unidade: string;
-    motivo: string;
-    prioridade: "normal" | "urgente";
-    observacoes: string;
-    pecaId: number | null;
-  }) => void;
+  onDuplicar?: (dados: PedidoPrefill) => void;
 };
 
 // Cor do badge de status (independente da urgência)
@@ -76,6 +63,7 @@ export function PedidoDetalheDialog({
     pedido: Pedido;
     eventos: PedidoEvento[];
     peca: Peca | null;
+    itens: PedidoItem[];
     compras: Compra[];
   }>(`/api/pedidos/${id}`, fetcher, { refreshInterval: 3000 });
   const [comentario, setComentario] = useState("");
@@ -160,15 +148,9 @@ export function PedidoDetalheDialog({
         className="mb-3 text-lg font-bold tracking-tight"
         style={{ color: "var(--text)" }}
       >
-        {pedido.quantidade > 1 && (
-          <span
-            className="mr-1 font-mono"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {pedido.quantidade} {pedido.unidade} ·
-          </span>
-        )}
-        {pedido.descricao}
+        {(data.itens?.length ?? 0) > 1
+          ? `${data.itens!.length} peças · pedido #${pedido.id}`
+          : pedido.descricao}
       </h2>
 
       <div className="grid grid-cols-2 gap-2">
@@ -176,15 +158,8 @@ export function PedidoDetalheDialog({
         <Field label="Local de trabalho" v={pedido.local ?? "—"} />
         <Field label="Modelo do veículo" v={pedido.modeloVeiculo ?? "—"} />
         <Field label="Ano" v={pedido.anoVeiculo ?? "—"} />
-        <Field label="Código da peça" v={pedido.codigoPeca ?? "—"} mono />
-        <Field label="Fabricante" v={pedido.fabricante ?? "—"} />
         <Field label="Solicitante" v={pedido.solicitante} />
         <Field label="Motivo" v={pedido.motivo} />
-        <Field
-          label="Quantidade solicitada"
-          v={`${pedido.quantidade} ${pedido.unidade}`}
-          mono
-        />
         <Field label="Solicitado em" v={formatBR(pedido.criadoEm)} />
         <Field
           label="Última atualização"
@@ -194,105 +169,42 @@ export function PedidoDetalheDialog({
         />
       </div>
 
-      {peca && (
+      {/* Lista de itens — N peças por pedido. Fallback: se a tabela estiver
+          vazia (edge-case de pedido não backfilled), monta 1 item a partir
+          dos campos achatados pra não quebrar a UI. */}
+      <div className="mt-3 space-y-2">
         <div
-          className="mt-3 rounded-md border p-3 text-sm"
-          style={{
-            background: "var(--surface-3)",
-            borderColor: "var(--border)",
-          }}
+          className="font-mono text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: "var(--text-muted)" }}
         >
-          <div
-            className="font-mono text-[10px] font-semibold uppercase tracking-widest"
-            style={{ color: "var(--text-muted)" }}
-          >
-            Peça vinculada ao estoque
-          </div>
-          <div className="mt-1 flex items-center justify-between">
-            <div>
-              <div
-                className="font-semibold"
-                style={{ color: "var(--text)" }}
-              >
-                {peca.nome}
-              </div>
-              {peca.codigo && (
-                <div
-                  className="font-mono text-[10px] uppercase tracking-widest"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {peca.codigo}
-                </div>
-              )}
-            </div>
-            <span
-              className={clsx(
-                "chip",
-                toNumSaldo(peca.saldo) === 0
-                  ? "chip-danger"
-                  : toNumSaldo(peca.saldo) <= toNumSaldo(peca.minimo)
-                  ? "chip-warning"
-                  : "chip-brand"
-              )}
-            >
-              Saldo {formatSaldo(peca.saldo, peca.unidade)} {peca.unidade}
-            </span>
-          </div>
-          {isAdmin &&
-            (toNumSaldo(peca.saldo) === 0 ||
-              toNumSaldo(peca.saldo) < pedido.quantidade) && (
-            <div
-              className="mt-2 rounded-md p-2 text-xs"
-              style={{
-                background: "var(--warning-soft)",
-                color: "var(--warning)",
-              }}
-            >
-              Estoque insuficiente.{" "}
-              <Link
-                href={{
-                  pathname: "/compras/nova",
-                  query: {
-                    pedido: pedido.id,
-                    peca: peca.id,
-                    qtd: pedido.quantidade,
-                  },
-                }}
-                className="font-semibold underline"
-              >
-                Solicitar compra →
-              </Link>
-            </div>
-          )}
+          {(data.itens?.length ?? 0) > 1
+            ? `Peças do pedido (${data.itens!.length})`
+            : "Peça"}
         </div>
-      )}
-
-      {!peca && isAdmin && (
-        <div className="mt-3 space-y-2">
-          <div
-            className="rounded-md p-2 text-xs"
-            style={{
-              background: "var(--surface-3)",
-              color: "var(--text-muted)",
-            }}
-          >
-            Este pedido não está vinculado a uma peça do estoque. Você pode
-            solicitar compra direto pra atender ele:
-          </div>
-          <Link
-            href={{
-              pathname: "/compras/nova",
-              query: {
-                pedido: pedido.id,
-                qtd: pedido.quantidade,
-              },
-            }}
-            className="btn-primary w-full justify-center"
-          >
-            📦 Solicitar compra pra este pedido →
-          </Link>
-        </div>
-      )}
+        {(data.itens && data.itens.length > 0
+          ? data.itens
+          : [
+              {
+                id: 0,
+                pedidoId: pedido.id,
+                pecaId: pedido.pecaId,
+                descricao: pedido.descricao,
+                codigoPeca: pedido.codigoPeca,
+                fabricante: pedido.fabricante,
+                quantidade: pedido.quantidade,
+                unidade: pedido.unidade,
+                criadoEm: pedido.criadoEm,
+              } as PedidoItem,
+            ]
+        ).map((it) => (
+          <ItemLinha
+            key={it.id}
+            item={it}
+            pedidoId={pedido.id}
+            isAdmin={isAdmin}
+          />
+        ))}
+      </div>
       {(data.compras ?? []).length > 0 && (
         <div className="mt-3 space-y-1.5">
           <div
@@ -377,15 +289,31 @@ export function PedidoDetalheDialog({
                 local: pedido.local ?? undefined,
                 modeloVeiculo: pedido.modeloVeiculo ?? undefined,
                 anoVeiculo: pedido.anoVeiculo ?? undefined,
-                codigoPeca: pedido.codigoPeca ?? undefined,
-                fabricante: pedido.fabricante ?? undefined,
-                descricao: pedido.descricao,
-                quantidade: pedido.quantidade,
-                unidade: pedido.unidade,
                 motivo: pedido.motivo,
                 prioridade: pedido.prioridade,
                 observacoes: pedido.observacoes ?? "",
-                pecaId: pedido.pecaId ?? null,
+                // Duplica TODOS os itens — se o pedido tiver 3 peças, o novo
+                // já começa com os 3 itens preenchidos.
+                itens:
+                  data.itens && data.itens.length > 0
+                    ? data.itens.map((it) => ({
+                        descricao: it.descricao,
+                        codigoPeca: it.codigoPeca ?? null,
+                        fabricante: it.fabricante ?? null,
+                        quantidade: it.quantidade,
+                        unidade: it.unidade,
+                        pecaId: it.pecaId ?? null,
+                      }))
+                    : [
+                        {
+                          descricao: pedido.descricao,
+                          codigoPeca: pedido.codigoPeca ?? null,
+                          fabricante: pedido.fabricante ?? null,
+                          quantidade: pedido.quantidade,
+                          unidade: pedido.unidade,
+                          pecaId: pedido.pecaId ?? null,
+                        },
+                      ],
               })
             }
           >
@@ -662,3 +590,82 @@ export function ConfirmDialog({
     </div>
   );
 }
+
+// Linha individual de um item do pedido. Mostra descrição, código,
+// fabricante, qtd/unidade e CTA "Solicitar compra" (admin). Quando há vários
+// itens, cada CTA passa `item=<id>` na URL pra prefill da compra apontar
+// pra o item específico.
+function ItemLinha({
+  item,
+  pedidoId,
+  isAdmin,
+}: {
+  item: PedidoItem;
+  pedidoId: number;
+  isAdmin: boolean;
+}) {
+  return (
+    <div
+      className="rounded-md border p-3 text-sm"
+      style={{
+        background: "var(--surface-3)",
+        borderColor: "var(--border)",
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div
+            className="font-semibold leading-snug"
+            style={{ color: "var(--text)" }}
+          >
+            {item.descricao}
+          </div>
+          {(item.codigoPeca || item.fabricante) && (
+            <div
+              className="mt-0.5 font-mono text-[10px] uppercase tracking-widest"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {item.codigoPeca}
+              {item.codigoPeca && item.fabricante && " · "}
+              {item.fabricante}
+            </div>
+          )}
+        </div>
+        <span
+          className="chip font-mono tabular-nums"
+          style={{ background: "var(--surface)" }}
+        >
+          {item.quantidade} {item.unidade}
+        </span>
+      </div>
+      {isAdmin && (
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span
+            className="font-mono text-[10px] uppercase tracking-widest"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {item.pecaId
+              ? "Vinculada ao estoque"
+              : "Sem vínculo com catálogo"}
+          </span>
+          <Link
+            href={{
+              pathname: "/compras/nova",
+              query: {
+                pedido: pedidoId,
+                ...(item.pecaId ? { peca: item.pecaId } : {}),
+                // Item id só vai quando é um item real (não o fallback id=0)
+                ...(item.id > 0 ? { item: item.id } : {}),
+                qtd: item.quantidade,
+              },
+            }}
+            className="btn-secondary text-xs"
+          >
+            📦 Solicitar compra
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+

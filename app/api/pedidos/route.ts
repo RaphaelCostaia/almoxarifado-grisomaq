@@ -2,27 +2,46 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { pedidos, pedidoEventos, pecas } from "@/db/schema";
+import { pedidos, pedidoEventos, pedidoItens, pecas } from "@/db/schema";
+import { inArray } from "drizzle-orm";
 import { exigirSessaoApi } from "@/lib/api-auth";
 import { auditar } from "@/lib/auditar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const NovoPedidoSchema = z.object({
-  frota: z.string().min(1).max(64),
-  local: z.string().max(64).optional().nullable(),
-  modeloVeiculo: z.string().max(128).optional().nullable(),
-  anoVeiculo: z.string().max(16).optional().nullable(),
+const ItemSchema = z.object({
   descricao: z.string().min(1),
   codigoPeca: z.string().max(64).optional().nullable(),
   fabricante: z.string().max(128).optional().nullable(),
   quantidade: z.coerce.number().int().min(1),
   unidade: z.string().min(1).max(16).default("un"),
+  pecaId: z.coerce.number().int().optional().nullable(),
+});
+
+// POST aceita dois formatos:
+//  (novo) itens: [...]
+//  (legado) descricao/codigoPeca/fabricante/quantidade/unidade/pecaId inline
+// A validação Zod abaixo cobre o shape "comum" (dados do pedido) e trata
+// itens separadamente — pedidos legados que mandam só os campos achatados
+// são convertidos pra array de 1 item antes de persistir.
+const NovoPedidoSchema = z.object({
+  frota: z.string().min(1).max(64),
+  local: z.string().max(64).optional().nullable(),
+  modeloVeiculo: z.string().max(128).optional().nullable(),
+  anoVeiculo: z.string().max(16).optional().nullable(),
   motivo: z.string().min(1).max(200),
   prioridade: z.enum(["normal", "urgente"]).default("normal"),
   observacoes: z.string().optional().nullable(),
   fotoUrl: z.string().min(1).max(500).optional().nullable(),
+  // Novo formato
+  itens: z.array(ItemSchema).min(1).max(20).optional(),
+  // Formato legado — ignorado se `itens` vier preenchido
+  descricao: z.string().min(1).optional(),
+  codigoPeca: z.string().max(64).optional().nullable(),
+  fabricante: z.string().max(128).optional().nullable(),
+  quantidade: z.coerce.number().int().min(1).optional(),
+  unidade: z.string().min(1).max(16).optional(),
   pecaId: z.coerce.number().int().optional().nullable(),
 });
 
@@ -67,7 +86,36 @@ export async function GET(req: NextRequest) {
   if (ate) conditions.push(lte(pedidos.criadoEm, new Date(`${ate}T23:59:59`)));
 
   const rows = await db
-    .select()
+    .select({
+      // Todos os campos de pedidos + qtdItens via subselect (compat com UI
+      // atual que lê os campos achatados; qtdItens é novo e usado pelo card
+      // pra mostrar "N peças" quando > 1).
+      id: pedidos.id,
+      frota: pedidos.frota,
+      local: pedidos.local,
+      modeloVeiculo: pedidos.modeloVeiculo,
+      anoVeiculo: pedidos.anoVeiculo,
+      descricao: pedidos.descricao,
+      codigoPeca: pedidos.codigoPeca,
+      fabricante: pedidos.fabricante,
+      quantidade: pedidos.quantidade,
+      unidade: pedidos.unidade,
+      motivo: pedidos.motivo,
+      solicitante: pedidos.solicitante,
+      prioridade: pedidos.prioridade,
+      status: pedidos.status,
+      fotoUrl: pedidos.fotoUrl,
+      observacoes: pedidos.observacoes,
+      pecaId: pedidos.pecaId,
+      criadoEm: pedidos.criadoEm,
+      atualizadoEm: pedidos.atualizadoEm,
+      entregueEm: pedidos.entregueEm,
+      deletadoEm: pedidos.deletadoEm,
+      deletadoPor: pedidos.deletadoPor,
+      qtdItens: sql<number>`(SELECT COUNT(*)::int FROM pedido_itens pi WHERE pi.pedido_id = ${pedidos.id})`.as(
+        "qtd_itens"
+      ),
+    })
     .from(pedidos)
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(pedidos.criadoEm));
@@ -102,49 +150,98 @@ export async function POST(req: NextRequest) {
   const dados = parsed.data;
   const solicitante = auth.sessao.nome;
 
-  let pecaNome: string | null = null;
-  if (dados.pecaId) {
-    const p = await db
-      .select()
-      .from(pecas)
-      .where(eq(pecas.id, dados.pecaId))
-      .limit(1);
-    if (p.length === 0) {
+  // Consolida os dois formatos em um array de itens (mínimo 1).
+  const itens =
+    dados.itens && dados.itens.length > 0
+      ? dados.itens
+      : [
+          {
+            descricao: dados.descricao ?? "",
+            codigoPeca: dados.codigoPeca ?? null,
+            fabricante: dados.fabricante ?? null,
+            quantidade: dados.quantidade ?? 1,
+            unidade: dados.unidade ?? "un",
+            pecaId: dados.pecaId ?? null,
+          },
+        ];
+
+  if (!itens[0].descricao || itens[0].descricao.trim() === "") {
+    return NextResponse.json(
+      { error: "dados_invalidos", detalhes: "descricao ausente no primeiro item" },
+      { status: 400 }
+    );
+  }
+
+  // Valida que todos os pecaId existem (lookup único em lote).
+  const pecaIds = itens
+    .map((i) => i.pecaId)
+    .filter((v): v is number => typeof v === "number" && v > 0);
+  const pecasEncontradas = pecaIds.length
+    ? await db.select().from(pecas).where(inArray(pecas.id, pecaIds))
+    : [];
+  const pecasPorId = new Map(pecasEncontradas.map((p) => [p.id, p]));
+  for (const id of pecaIds) {
+    if (!pecasPorId.has(id)) {
       return NextResponse.json(
-        { error: "peca_inexistente" },
+        { error: "peca_inexistente", pecaId: id },
         { status: 400 }
       );
     }
-    pecaNome = p[0].nome;
   }
 
-  const [pedido] = await db
-    .insert(pedidos)
-    .values({
-      frota: dados.frota,
-      local: dados.local ?? null,
-      modeloVeiculo: dados.modeloVeiculo?.trim() || null,
-      anoVeiculo: dados.anoVeiculo?.trim() || null,
-      descricao: dados.descricao,
-      codigoPeca: dados.codigoPeca?.trim() || null,
-      fabricante: dados.fabricante?.trim() || null,
-      quantidade: dados.quantidade,
-      unidade: dados.unidade,
-      motivo: dados.motivo,
-      solicitante,
-      prioridade: dados.prioridade,
-      observacoes: dados.observacoes ?? null,
-      fotoUrl: dados.fotoUrl ?? null,
-      pecaId: dados.pecaId ?? null,
-    })
-    .returning();
+  // Resumo achatado em `pedidos` = 1º item (retrocompat com código antigo
+  // e com relatórios/CSVs que ainda leem os campos planos).
+  const primeiro = itens[0];
+  const totalQtd = itens.reduce((acc, i) => acc + i.quantidade, 0);
 
-  await db.insert(pedidoEventos).values({
-    pedidoId: pedido.id,
-    autor: solicitante,
-    texto: pecaNome
-      ? `Pedido registrado. Peça vinculada ao estoque: ${pecaNome}.`
-      : "Pedido registrado.",
+  const pedidoCriado = await db.transaction(async (tx) => {
+    const [pedido] = await tx
+      .insert(pedidos)
+      .values({
+        frota: dados.frota,
+        local: dados.local ?? null,
+        modeloVeiculo: dados.modeloVeiculo?.trim() || null,
+        anoVeiculo: dados.anoVeiculo?.trim() || null,
+        descricao: primeiro.descricao,
+        codigoPeca: primeiro.codigoPeca?.trim() || null,
+        fabricante: primeiro.fabricante?.trim() || null,
+        quantidade: primeiro.quantidade,
+        unidade: primeiro.unidade,
+        motivo: dados.motivo,
+        solicitante,
+        prioridade: dados.prioridade,
+        observacoes: dados.observacoes ?? null,
+        fotoUrl: dados.fotoUrl ?? null,
+        pecaId: primeiro.pecaId ?? null,
+      })
+      .returning();
+
+    await tx.insert(pedidoItens).values(
+      itens.map((it) => ({
+        pedidoId: pedido.id,
+        pecaId: it.pecaId ?? null,
+        descricao: it.descricao,
+        codigoPeca: it.codigoPeca?.trim() || null,
+        fabricante: it.fabricante?.trim() || null,
+        quantidade: it.quantidade,
+        unidade: it.unidade,
+      }))
+    );
+
+    const vinculadas = itens.filter((i) => i.pecaId).length;
+    const texto =
+      itens.length === 1
+        ? primeiro.pecaId
+          ? `Pedido registrado. Peça vinculada ao estoque: ${pecasPorId.get(primeiro.pecaId)!.nome}.`
+          : "Pedido registrado."
+        : `Pedido registrado com ${itens.length} peças (${vinculadas} vinculadas ao estoque).`;
+    await tx.insert(pedidoEventos).values({
+      pedidoId: pedido.id,
+      autor: solicitante,
+      texto,
+    });
+
+    return pedido;
   });
 
   await auditar({
@@ -152,18 +249,25 @@ export async function POST(req: NextRequest) {
     sessao: auth.sessao,
     acao: "pedido_criar",
     entidade: "pedido",
-    entidadeId: pedido.id,
-    resumo: `Pedido #${pedido.id} criado (${dados.frota} — ${dados.quantidade} ${dados.unidade}).`,
+    entidadeId: pedidoCriado.id,
+    resumo:
+      itens.length === 1
+        ? `Pedido #${pedidoCriado.id} criado (${dados.frota} — ${primeiro.quantidade} ${primeiro.unidade}).`
+        : `Pedido #${pedidoCriado.id} criado (${dados.frota} — ${itens.length} peças, total ${totalQtd}).`,
     diff: {
-      frota: pedido.frota,
-      descricao: pedido.descricao,
-      quantidade: pedido.quantidade,
-      unidade: pedido.unidade,
-      prioridade: pedido.prioridade,
-      pecaId: pedido.pecaId,
-      motivo: pedido.motivo,
+      frota: pedidoCriado.frota,
+      motivo: pedidoCriado.motivo,
+      prioridade: pedidoCriado.prioridade,
+      itens: itens.map((i) => ({
+        descricao: i.descricao,
+        codigoPeca: i.codigoPeca ?? null,
+        fabricante: i.fabricante ?? null,
+        quantidade: i.quantidade,
+        unidade: i.unidade,
+        pecaId: i.pecaId ?? null,
+      })),
     },
   });
 
-  return NextResponse.json({ pedido }, { status: 201 });
+  return NextResponse.json({ pedido: pedidoCriado }, { status: 201 });
 }

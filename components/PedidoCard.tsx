@@ -4,8 +4,10 @@ import clsx from "clsx";
 import type { Pedido } from "@/db/schema";
 import { formatBR, diasDesde } from "@/lib/date";
 
+// Pedido pode trazer `qtdItens` do GET lista (contagem de pedido_itens). Se
+// vier > 1, o card mostra "N peças" em vez da descrição única.
 type Props = {
-  pedido: Pedido;
+  pedido: Pedido & { qtdItens?: number };
   destaque: boolean;
   arrastavel?: boolean;
   onAbrir: () => void;
@@ -68,29 +70,50 @@ export function PedidoCard({
           {pedido.local && (
             <span className="chip chip-info">📍 {pedido.local}</span>
           )}
-          <span
-            className="font-mono text-[10px] font-bold tabular-nums"
-            style={{ color: "var(--text-muted)" }}
-          >
-            ×{pedido.quantidade} {pedido.unidade}
-          </span>
+          {(pedido.qtdItens ?? 1) > 1 ? (
+            <span
+              className="rounded px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-widest"
+              style={{
+                background: "var(--brand-soft, var(--surface-3))",
+                color: "var(--brand)",
+              }}
+            >
+              {pedido.qtdItens} peças
+            </span>
+          ) : (
+            <span
+              className="font-mono text-[10px] font-bold tabular-nums"
+              style={{ color: "var(--text-muted)" }}
+            >
+              ×{pedido.quantidade} {pedido.unidade}
+            </span>
+          )}
         </div>
         <div
           className="mt-1.5 line-clamp-2 text-[13px] font-semibold leading-snug"
           style={{ color: "var(--text)" }}
         >
           {pedido.descricao}
+          {(pedido.qtdItens ?? 1) > 1 && (
+            <span
+              className="ml-1 font-mono text-[10px] font-normal"
+              style={{ color: "var(--text-muted)" }}
+            >
+              +{(pedido.qtdItens as number) - 1} outras
+            </span>
+          )}
         </div>
-        {(pedido.codigoPeca || pedido.fabricante) && (
-          <div
-            className="mt-0.5 truncate font-mono text-[10px]"
-            style={{ color: "var(--text-muted)" }}
-          >
-            {pedido.codigoPeca}
-            {pedido.codigoPeca && pedido.fabricante && " · "}
-            {pedido.fabricante}
-          </div>
-        )}
+        {(pedido.qtdItens ?? 1) === 1 &&
+          (pedido.codigoPeca || pedido.fabricante) && (
+            <div
+              className="mt-0.5 truncate font-mono text-[10px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {pedido.codigoPeca}
+              {pedido.codigoPeca && pedido.fabricante && " · "}
+              {pedido.fabricante}
+            </div>
+          )}
         <div
           className="mt-1.5 flex items-center justify-between text-[10px]"
           style={{ color: "var(--text-muted)" }}

@@ -10,18 +10,22 @@ import { useIsAdmin } from "./SessionProvider";
 import { AutoTextarea } from "./AutoTextarea";
 import { parseMoney } from "@/lib/parseMoney";
 import { formatSaldo, toNum } from "@/lib/formatSaldo";
-import type { Peca, Pedido } from "@/db/schema";
+import type { Peca, Pedido, PedidoItem } from "@/db/schema";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Props = {
   pedidoId: number | null;
+  // Identifica qual item do pedido origina esta compra (quando o pedido tem
+  // várias peças). Opcional; pedidos de 1 peça não precisam.
+  pedidoItemIdInicial: number | null;
   pecaIdInicial: number | null;
   qtdInicial: number | null;
 };
 
 export function NovaCompraForm({
   pedidoId,
+  pedidoItemIdInicial,
   pecaIdInicial,
   qtdInicial,
 }: Props) {
@@ -46,10 +50,10 @@ export function NovaCompraForm({
     pecaIdInicial ? `/api/estoque` : null,
     fetcher
   );
-  const { data: pedidoPre } = useSWR<{ pedido: Pedido }>(
-    pedidoId ? `/api/pedidos/${pedidoId}` : null,
-    fetcher
-  );
+  const { data: pedidoPre } = useSWR<{
+    pedido: Pedido;
+    itens?: PedidoItem[];
+  }>(pedidoId ? `/api/pedidos/${pedidoId}` : null, fetcher);
 
   useEffect(() => {
     if (pecaIdInicial && pecaPre) {
@@ -63,12 +67,23 @@ export function NovaCompraForm({
   }, [pecaIdInicial, pecaPre]);
 
   useEffect(() => {
-    if (pedidoPre?.pedido) {
+    if (!pedidoPre?.pedido) return;
+    // Se o pedido tem itens e o chamador especificou qual item (pedidoItemIdInicial),
+    // prefill a partir desse item. Senão (pedido legado ou sem item especificado),
+    // usa os campos achatados do pedido como antes.
+    const itemAlvo = pedidoItemIdInicial
+      ? pedidoPre.itens?.find((i) => i.id === pedidoItemIdInicial)
+      : null;
+    if (itemAlvo) {
+      if (!descricao) setDescricao(itemAlvo.descricao);
+      if (!qtdInicial) setQtd(itemAlvo.quantidade);
+      setUnidade(itemAlvo.unidade);
+    } else {
       if (!descricao) setDescricao(pedidoPre.pedido.descricao);
       if (!qtdInicial) setQtd(pedidoPre.pedido.quantidade);
       setUnidade(pedidoPre.pedido.unidade);
     }
-  }, [pedidoPre, descricao, qtdInicial]);
+  }, [pedidoPre, pedidoItemIdInicial, descricao, qtdInicial]);
 
   const totalNumero = parseMoney(valorUnit);
   const total = totalNumero != null ? totalNumero * qtd : null;
@@ -86,6 +101,7 @@ export function NovaCompraForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pedidoId: pedidoId ?? null,
+          pedidoItemId: pedidoItemIdInicial ?? null,
           pecaId: peca?.id ?? null,
           descricao: peca ? peca.nome : descricao,
           quantidade: qtd,

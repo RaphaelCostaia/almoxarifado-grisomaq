@@ -177,6 +177,35 @@ export const notificacoes = pgTable(
   })
 );
 
+// Itens do pedido — permite N peças por pedido.
+// Pedidos antigos (criados antes desta tabela) são backfilled com 1 item
+// correspondente aos campos achatados em `pedidos` (descricao/quantidade/etc).
+// Os campos achatados em `pedidos` continuam preenchidos como "resumo do 1º
+// item" pra retrocompat de qualquer código que ainda leia dali.
+export const pedidoItens = pgTable(
+  "pedido_itens",
+  {
+    id: serial("id").primaryKey(),
+    pedidoId: integer("pedido_id")
+      .notNull()
+      .references(() => pedidos.id, { onDelete: "cascade" }),
+    pecaId: integer("peca_id").references(() => pecas.id, {
+      onDelete: "set null",
+    }),
+    descricao: text("descricao").notNull(),
+    codigoPeca: varchar("codigo_peca", { length: 64 }),
+    fabricante: varchar("fabricante", { length: 128 }),
+    quantidade: integer("quantidade").notNull().default(1),
+    unidade: varchar("unidade", { length: 16 }).notNull().default("un"),
+    criadoEm: timestamp("criado_em", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => ({
+    pedidoIdx: index("pedido_itens_pedido_idx").on(t.pedidoId),
+  })
+);
+
 export const pedidoEventos = pgTable(
   "pedido_eventos",
   {
@@ -200,6 +229,12 @@ export const compras = pgTable(
   {
     id: serial("id").primaryKey(),
     pedidoId: integer("pedido_id").references(() => pedidos.id, {
+      onDelete: "set null",
+    }),
+    // FK opcional pra pedido_itens — identifica QUAL item de um pedido com
+    // várias peças originou esta compra. Compras antigas (pré-feature) e
+    // compras de pedidos com 1 peça podem deixar NULL.
+    pedidoItemId: integer("pedido_item_id").references(() => pedidoItens.id, {
       onDelete: "set null",
     }),
     pecaId: integer("peca_id").references(() => pecas.id, {
@@ -437,6 +472,8 @@ export type NovaPeca = typeof pecas.$inferInsert;
 export type Pedido = typeof pedidos.$inferSelect;
 export type NovoPedido = typeof pedidos.$inferInsert;
 export type PedidoEvento = typeof pedidoEventos.$inferSelect;
+export type PedidoItem = typeof pedidoItens.$inferSelect;
+export type NovoPedidoItem = typeof pedidoItens.$inferInsert;
 export type Compra = typeof compras.$inferSelect;
 export type NovaCompra = typeof compras.$inferInsert;
 export type CompraEvento = typeof compraEventos.$inferSelect;
