@@ -7,3 +7,6 @@ uploads
 .env*.local
 *.tsbuildinfo
 .vercel
+# Relatórios de diff gerados pelos scripts de atualização em lote
+relatorio-diff-frotas.json
+relatorio-diff-pecas.json

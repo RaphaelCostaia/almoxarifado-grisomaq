@@ -123,16 +123,23 @@ def carregar_implementos(caminho: Path):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Uso: python scripts/gerar-seed-frotas.py <equipamentos.xlsx> <implementos.xlsx>")
+    # Uso suportado:
+    #   python scripts/gerar-seed-frotas.py <equipamentos.xlsx> <implementos.xlsx>
+    #   python scripts/gerar-seed-frotas.py <equipamentos.xlsx>            (sem implementos)
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print("Uso: python scripts/gerar-seed-frotas.py <equipamentos.xlsx> [implementos.xlsx]")
         sys.exit(2)
 
     equip_path = Path(sys.argv[1])
-    impl_path = Path(sys.argv[2])
+    impl_path = Path(sys.argv[2]) if len(sys.argv) == 3 else None
     print(f"[gerar-seed] Lendo equipamentos: {equip_path.name}")
     equip = carregar_equipamentos(equip_path)
-    print(f"[gerar-seed] Lendo implementos: {impl_path.name}")
-    impl = carregar_implementos(impl_path)
+    if impl_path is not None:
+        print(f"[gerar-seed] Lendo implementos: {impl_path.name}")
+        impl = carregar_implementos(impl_path)
+    else:
+        print("[gerar-seed] Sem planilha de implementos (atualizacao parcial)")
+        impl = []
 
     # Detecta duplicidade de numero — se houver, coloca sufixo pra nao colidir
     todos = []

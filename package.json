@@ -13,7 +13,12 @@
     "db:seed-frotas": "tsx --env-file=.env.local db/seed-frotas.ts",
     "db:seed-pecas": "tsx --env-file=.env.local db/seed-pecas.ts",
     "db:cleanup": "tsx --env-file=.env.local db/cleanup-duplicates.ts",
-    "db:limpar-teste": "tsx --env-file=.env.local db/limpar-dados-teste.ts"
+    "db:limpar-teste": "tsx --env-file=.env.local db/limpar-dados-teste.ts",
+    "diff:frotas": "tsx --env-file=.env.local scripts/diff-frotas.ts",
+    "diff:pecas": "tsx --env-file=.env.local scripts/diff-pecas.ts",
+    "atualizar:frotas": "tsx --env-file=.env.local scripts/aplicar-diff-frotas.ts",
+    "atualizar:pecas": "tsx --env-file=.env.local scripts/aplicar-diff-pecas.ts",
+    "verificar:atualizacao": "tsx --env-file=.env.local scripts/verificar-pos-atualizacao.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

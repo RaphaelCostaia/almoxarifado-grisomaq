@@ -31,6 +31,8 @@ export const AUDIT_ACOES = [
   "frota_criar",
   "frota_editar",
   "frota_soft_delete",
+  "frotas_atualizar_lote",
+  "pecas_atualizar_lote",
   // Usuários
   "usuario_criar",
   "usuario_ativar",
@@ -91,6 +93,8 @@ export const AUDIT_ACAO_LABELS: Record<AuditAcao, string> = {
   frota_criar: "Frota cadastrada",
   frota_editar: "Frota editada",
   frota_soft_delete: "Frota excluída",
+  frotas_atualizar_lote: "Frotas — atualização em lote (planilha do cliente)",
+  pecas_atualizar_lote: "Peças — atualização em lote (planilha do cliente)",
   usuario_criar: "Usuário criado",
   usuario_ativar: "Usuário ativado",
   usuario_desativar: "Usuário desativado",
