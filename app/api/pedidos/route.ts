@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { pedidos, pedidoEventos, pedidoItens, pecas } from "@/db/schema";
-import { inArray } from "drizzle-orm";
+import { inArray, count } from "drizzle-orm";
 import { exigirSessaoApi } from "@/lib/api-auth";
 import { auditar } from "@/lib/auditar";
 
@@ -85,40 +85,35 @@ export async function GET(req: NextRequest) {
   if (de) conditions.push(gte(pedidos.criadoEm, new Date(`${de}T00:00:00`)));
   if (ate) conditions.push(lte(pedidos.criadoEm, new Date(`${ate}T23:59:59`)));
 
-  const rows = await db
-    .select({
-      // Todos os campos de pedidos + qtdItens via subselect (compat com UI
-      // atual que lê os campos achatados; qtdItens é novo e usado pelo card
-      // pra mostrar "N peças" quando > 1).
-      id: pedidos.id,
-      frota: pedidos.frota,
-      local: pedidos.local,
-      modeloVeiculo: pedidos.modeloVeiculo,
-      anoVeiculo: pedidos.anoVeiculo,
-      descricao: pedidos.descricao,
-      codigoPeca: pedidos.codigoPeca,
-      fabricante: pedidos.fabricante,
-      quantidade: pedidos.quantidade,
-      unidade: pedidos.unidade,
-      motivo: pedidos.motivo,
-      solicitante: pedidos.solicitante,
-      prioridade: pedidos.prioridade,
-      status: pedidos.status,
-      fotoUrl: pedidos.fotoUrl,
-      observacoes: pedidos.observacoes,
-      pecaId: pedidos.pecaId,
-      criadoEm: pedidos.criadoEm,
-      atualizadoEm: pedidos.atualizadoEm,
-      entregueEm: pedidos.entregueEm,
-      deletadoEm: pedidos.deletadoEm,
-      deletadoPor: pedidos.deletadoPor,
-      qtdItens: sql<number>`(SELECT COUNT(*)::int FROM pedido_itens pi WHERE pi.pedido_id = ${pedidos.id})`.as(
-        "qtd_itens"
-      ),
-    })
+  const rowsBase = await db
+    .select()
     .from(pedidos)
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(pedidos.criadoEm));
+
+  // Contagem de itens por pedido — query separada com GROUP BY, muito mais
+  // segura que subselect correlacionado interpolado (interpolação de column
+  // dentro de `sql`...``.as()` pode escapar errado em algumas versões do
+  // drizzle, fazendo todos os pedidos receberem o COUNT de UM único pedido).
+  const ids = rowsBase.map((r) => r.id);
+  const contagens = ids.length
+    ? await db
+        .select({
+          pedidoId: pedidoItens.pedidoId,
+          qtd: count(),
+        })
+        .from(pedidoItens)
+        .where(inArray(pedidoItens.pedidoId, ids))
+        .groupBy(pedidoItens.pedidoId)
+    : [];
+  const qtdPorPedido = new Map<number, number>(
+    contagens.map((c) => [c.pedidoId, Number(c.qtd)])
+  );
+
+  const rows = rowsBase.map((r) => ({
+    ...r,
+    qtdItens: qtdPorPedido.get(r.id) ?? 1,
+  }));
 
   const frotasDistinct = await db
     .selectDistinct({ frota: pedidos.frota })
