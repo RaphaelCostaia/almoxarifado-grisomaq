@@ -33,8 +33,15 @@ export function PecaAutocomplete({
   const ref = useRef<HTMLDivElement>(null);
 
   const q = valor.trim();
+  // No modo "porCodigo", restringe a busca aos campos de código (prefixo).
+  // Isso evita que códigos comuns (ex.: 701, 08, 100) sejam escondidos por
+  // outros códigos maiores que os contêm como substring. Limite 15 em
+  // ambos os modos — tabela é indexada, custo irrisório.
+  const paramCampo = porCodigo ? "&campo=codigo" : "";
   const { data } = useSWR<{ pecas: Peca[] }>(
-    q.length >= 2 ? `/api/estoque?q=${encodeURIComponent(q)}&limit=8` : null,
+    q.length >= 2
+      ? `/api/estoque?q=${encodeURIComponent(q)}${paramCampo}&limit=15`
+      : null,
     fetcher
   );
 

@@ -28,25 +28,61 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl;
   const q = url.searchParams.get("q")?.trim();
   const familia = url.searchParams.get("familia")?.trim();
+  // `campo=codigo` restringe a busca aos campos de código (usado pelo
+  // autocomplete em modo "porCodigo"). Fora disso busca mista nome+códigos.
+  const campo = url.searchParams.get("campo")?.trim();
   const limit = Math.min(500, Number(url.searchParams.get("limit") ?? 200));
 
   const conds: any[] = [isNull(pecas.deletadoEm)];
   if (q) {
-    conds.push(
-      or(
-        ilike(pecas.nome, `%${q}%`),
-        ilike(pecas.codigo, `%${q}%`),
-        ilike(pecas.codigoFabricante, `%${q}%`)
-      )
-    );
+    if (campo === "codigo") {
+      // Modo "só código": prefixo em codigo/codigoFabricante/codigoParalelo.
+      // Prefixo (`q%`) em vez de `%q%` evita que códigos curtos como "701"
+      // sejam engolidos por códigos maiores que contêm "701" como substring.
+      conds.push(
+        or(
+          ilike(pecas.codigo, `${q}%`),
+          ilike(pecas.codigoFabricante, `${q}%`),
+          ilike(pecas.codigoParalelo, `${q}%`)
+        )
+      );
+    } else {
+      // Modo mista — inclui `codigoParalelo` (gap antes).
+      conds.push(
+        or(
+          ilike(pecas.nome, `%${q}%`),
+          ilike(pecas.codigo, `%${q}%`),
+          ilike(pecas.codigoFabricante, `%${q}%`),
+          ilike(pecas.codigoParalelo, `%${q}%`)
+        )
+      );
+    }
   }
   if (familia) conds.push(eq(pecas.familia, familia));
+
+  // Ranking de relevância (só aplicado quando há `q`):
+  //   1º — match exato de código em qualquer um dos 3 campos
+  //   2º — prefixo em `codigo`
+  //   3º — prefixo em `nome`
+  //   4º — alfabético por nome
+  // Garante que a peça cujo código é exatamente o que o usuário digitou
+  // vem no topo, mesmo que outras peças matchem como substring.
+  const orderBy = q
+    ? [
+        sql`CASE WHEN ${pecas.codigo} = ${q}
+                  OR ${pecas.codigoFabricante} = ${q}
+                  OR ${pecas.codigoParalelo} = ${q} THEN 0 ELSE 1 END`,
+        sql`CASE WHEN ${pecas.codigo} ILIKE ${q + "%"} THEN 0 ELSE 1 END`,
+        sql`CASE WHEN ${pecas.nome} ILIKE ${q + "%"} THEN 0 ELSE 1 END`,
+        asc(pecas.nome),
+      ]
+    : [asc(pecas.nome)];
 
   const rows = await db
     .select()
     .from(pecas)
     .where(conds.length ? and(...conds) : undefined)
-    .orderBy(asc(pecas.nome))
+    .orderBy(...orderBy)
     .limit(limit);
 
   const totais = await db
