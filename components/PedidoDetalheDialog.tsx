@@ -65,7 +65,7 @@ export function PedidoDetalheDialog({
     peca: Peca | null;
     itens: PedidoItem[];
     compras: Compra[];
-  }>(`/api/pedidos/${id}`, fetcher, { refreshInterval: 3000 });
+  }>(`/api/pedidos/${id}`, fetcher, { refreshInterval: 8000 });
   const [comentario, setComentario] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [confirmando, setConfirmando] = useState<null | "cancelar" | "reabrir" | "excluir">(

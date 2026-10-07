@@ -13,7 +13,7 @@ type Kpis = {
 
 export function KPIBar() {
   const { data } = useSWR<Kpis>("/api/pedidos/kpis", fetcher, {
-    refreshInterval: 4000,
+    refreshInterval: 10000,
   });
   const k = data ?? { emAberto: 0, urgentes: 0, emAtraso: 0, entregues7d: 0 };
   return (

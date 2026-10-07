@@ -85,11 +85,15 @@ export async function GET(req: NextRequest) {
   if (de) conditions.push(gte(pedidos.criadoEm, new Date(`${de}T00:00:00`)));
   if (ate) conditions.push(lte(pedidos.criadoEm, new Date(`${ate}T23:59:59`)));
 
+  // LIMIT no GET: cobre 99% dos casos de operação. Pra ver pedidos mais
+  // antigos usa os filtros de data (de/ate). Reduz drasticamente o
+  // payload JSON e a carga de polling.
   const rowsBase = await db
     .select()
     .from(pedidos)
     .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(pedidos.criadoEm));
+    .orderBy(desc(pedidos.criadoEm))
+    .limit(300);
 
   // Contagem de itens por pedido — query separada com GROUP BY, muito mais
   // segura que subselect correlacionado interpolado (interpolação de column
@@ -115,19 +119,11 @@ export async function GET(req: NextRequest) {
     qtdItens: qtdPorPedido.get(r.id) ?? 1,
   }));
 
-  const frotasDistinct = await db
-    .selectDistinct({ frota: pedidos.frota })
-    .from(pedidos)
-    .where(isNull(pedidos.deletadoEm));
-  const locaisDistinct = await db
-    .selectDistinct({ local: pedidos.local })
-    .from(pedidos)
-    .where(isNull(pedidos.deletadoEm));
-
+  // Nota: frotas/locais pros dropdowns de filtro moveram pra endpoint
+  // dedicado /api/pedidos/filtros (cacheado no cliente com dedupingInterval
+  // alto). Rodavam a cada polling de 4s aqui e varriam `pedidos` inteira.
   return NextResponse.json({
     pedidos: rows,
-    frotas: frotasDistinct.map((f) => f.frota).filter(Boolean),
-    locais: locaisDistinct.map((l) => l.local).filter(Boolean),
   });
 }
 

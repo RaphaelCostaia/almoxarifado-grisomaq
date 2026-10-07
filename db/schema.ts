@@ -116,6 +116,7 @@ export const pecas = pgTable(
     nomeIdx: index("pecas_nome_idx").on(t.nome),
     familiaIdx: index("pecas_familia_idx").on(t.familia),
     codFabIdx: index("pecas_codigo_fabricante_idx").on(t.codigoFabricante),
+    codParIdx: index("pecas_codigo_paralelo_idx").on(t.codigoParalelo),
   })
 );
 

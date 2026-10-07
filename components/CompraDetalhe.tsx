@@ -32,7 +32,7 @@ export function CompraDetalhe({ id }: { id: number }) {
     eventos: CompraEvento[];
     peca: Peca | null;
     pedidoVinculado: Pedido | null;
-  }>(`/api/compras/${id}`, fetcher, { refreshInterval: 4000 });
+  }>(`/api/compras/${id}`, fetcher, { refreshInterval: 10000 });
 
   const [nf, setNf] = useState("");
   const [nfFile, setNfFile] = useState<File | null>(null);

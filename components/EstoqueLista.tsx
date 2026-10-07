@@ -28,7 +28,7 @@ export function EstoqueLista() {
     pecas: Peca[];
     resumo: { total: number; repor: number; criticos: number };
   }>(`/api/estoque?${params}`, fetcher, {
-    refreshInterval: 5000,
+    refreshInterval: 30000,
   });
 
   const { data: fams } = useSWR<{ familias: string[] }>(

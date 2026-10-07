@@ -396,6 +396,38 @@ async function main() {
   `);
   console.log(`[constraints]   backfilled ${(backfill as any).length ?? 0} pedidos`);
 
+  // ================================================================
+  // PERFORMANCE — índices adicionais pra queries quentes
+  // ================================================================
+  // Zero destrutivo: só CREATE INDEX IF NOT EXISTS.
+  console.log("[constraints] Criando índices de performance (se faltarem)…");
+
+  // Autocomplete também busca em codigo_paralelo — faltava índice
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS pecas_codigo_paralelo_idx
+      ON pecas (codigo_paralelo);
+  `);
+
+  // Partial indexes compostos: todas as listagens filtram deletado_em IS NULL
+  // + ordenam por criado_em DESC. Partial index reduz o tamanho e deixa o
+  // planner escolher sempre esse em listagem.
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS pedidos_ativo_criado_idx
+      ON pedidos (criado_em DESC) WHERE deletado_em IS NULL;
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS pedidos_ativo_status_idx
+      ON pedidos (status, criado_em DESC) WHERE deletado_em IS NULL;
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS compras_ativo_criado_idx
+      ON compras (criado_em DESC) WHERE deletado_em IS NULL;
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS compras_ativo_status_idx
+      ON compras (status, criado_em DESC) WHERE deletado_em IS NULL;
+  `);
+
   console.log("[constraints] ✓ Concluído.");
   process.exit(0);
 }

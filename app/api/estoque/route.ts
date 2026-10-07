@@ -9,6 +9,16 @@ import { auditar } from "@/lib/auditar";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Cache simples em memória do processo pro bloco "resumo" (count/sum em
+// pecas). O resumo muda só quando o admin cria/edita/baixa peças — o
+// polling do catálogo é a cada 30s, então um TTL de 30s já poupa 95% das
+// agregações sobre 14k linhas.
+let resumoCache: {
+  valor: { total: number; repor: number; criticos: number };
+  expiraEm: number;
+} | null = null;
+const RESUMO_TTL_MS = 30_000;
+
 const decimal = z.coerce.number().nonnegative().default(0);
 
 const NovaPecaSchema = z.object({
@@ -85,19 +95,31 @@ export async function GET(req: NextRequest) {
     .orderBy(...orderBy)
     .limit(limit);
 
-  const totais = await db
-    .select({
-      total: sql<number>`count(*)::int`,
-      repor: sql<number>`sum(case when saldo <= minimo and saldo > 0 then 1 else 0 end)::int`,
-      criticos: sql<number>`sum(case when saldo = 0 then 1 else 0 end)::int`,
-    })
-    .from(pecas)
-    .where(isNull(pecas.deletadoEm));
+  const agora = Date.now();
+  if (!resumoCache || resumoCache.expiraEm < agora) {
+    const totais = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        repor: sql<number>`sum(case when saldo <= minimo and saldo > 0 then 1 else 0 end)::int`,
+        criticos: sql<number>`sum(case when saldo = 0 then 1 else 0 end)::int`,
+      })
+      .from(pecas)
+      .where(isNull(pecas.deletadoEm));
+    resumoCache = {
+      valor: totais[0] ?? { total: 0, repor: 0, criticos: 0 },
+      expiraEm: agora + RESUMO_TTL_MS,
+    };
+  }
 
   return NextResponse.json({
     pecas: rows,
-    resumo: totais[0] ?? { total: 0, repor: 0, criticos: 0 },
+    resumo: resumoCache.valor,
   });
+}
+
+// Invalida cache quando algo muda — chamado pelos handlers que escrevem.
+function invalidarResumo() {
+  resumoCache = null;
 }
 
 export async function POST(req: NextRequest) {
@@ -144,6 +166,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const [p] = await db.insert(pecas).values(dados).returning();
+    invalidarResumo();
     await auditar({
       req,
       sessao: admin.sessao,

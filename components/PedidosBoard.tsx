@@ -97,11 +97,20 @@ export function PedidosBoard() {
 
   const { data, isLoading, mutate } = useSWR<{
     pedidos: (Pedido & { qtdItens?: number })[];
-    frotas: string[];
-    locais: string[];
   }>(`/api/pedidos?${params.toString()}`, fetcher, {
     refreshInterval: 4000,
     revalidateOnFocus: true,
+  });
+
+  // Filtros (frotas/locais distintos) vêm de endpoint próprio, cacheado
+  // com dedupingInterval alto — não precisa de polling pois muda muito pouco.
+  const { data: filtrosData } = useSWR<{
+    frotas: string[];
+    locais: string[];
+  }>(`/api/pedidos/filtros`, fetcher, {
+    refreshInterval: 0,
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
   });
 
   const pedidos = useMemo(() => {
@@ -175,10 +184,10 @@ export function PedidosBoard() {
         q={q}
         onQ={setQ}
         frota={frota}
-        frotas={data?.frotas ?? []}
+        frotas={filtrosData?.frotas ?? []}
         onFrota={setFrota}
         local={local}
-        locais={data?.locais ?? []}
+        locais={filtrosData?.locais ?? []}
         onLocal={setLocal}
         soUrgentes={soUrgentes}
         onSoUrgentes={setSoUrgentes}
@@ -259,7 +268,7 @@ export function PedidosBoard() {
       {novo && (
         <NovoPedidoDialog
           prefill={prefill ?? undefined}
-          locaisConhecidos={data?.locais ?? []}
+          locaisConhecidos={filtrosData?.locais ?? []}
           onClose={() => {
             setNovo(false);
             setPrefill(null);

@@ -41,7 +41,7 @@ export function ComprasLista() {
   const { data } = useSWR<{ compras: Compra[] }>(
     `/api/compras?${params}`,
     fetcher,
-    { refreshInterval: 5000 }
+    { refreshInterval: 10000 }
   );
   const compras = data?.compras ?? [];
 

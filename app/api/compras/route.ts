@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
     .orderBy(
       sql`case when ${compras.status} in ('rascunho','aprovada','comprada') then 0 else 1 end`,
       desc(compras.criadoEm)
-    );
+    )
+    .limit(300);
 
   // Funcionário não enxerga valores financeiros
   const sess = await sessaoAtual();

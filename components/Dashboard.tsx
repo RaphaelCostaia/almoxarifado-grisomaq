@@ -25,7 +25,7 @@ type DadosDashboard = {
 
 export function Dashboard() {
   const { data } = useSWR<DadosDashboard>("/api/dashboard", fetcher, {
-    refreshInterval: 15000,
+    refreshInterval: 60000,
   });
 
   if (!data) {

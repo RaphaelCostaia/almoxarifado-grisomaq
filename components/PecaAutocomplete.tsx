@@ -33,14 +33,23 @@ export function PecaAutocomplete({
   const ref = useRef<HTMLDivElement>(null);
 
   const q = valor.trim();
+  // Debounce de 250ms antes de disparar a request: evita 1 request por
+  // keystroke numa tabela de 14k peças, o que era um dos maiores gargalos
+  // perceptíveis — digitar "parafuso sextavado" fazia 17 requests seguidas.
+  const [qDebounced, setQDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setQDebounced(q), 250);
+    return () => clearTimeout(t);
+  }, [q]);
+
   // No modo "porCodigo", restringe a busca aos campos de código (prefixo).
   // Isso evita que códigos comuns (ex.: 701, 08, 100) sejam escondidos por
   // outros códigos maiores que os contêm como substring. Limite 15 em
   // ambos os modos — tabela é indexada, custo irrisório.
   const paramCampo = porCodigo ? "&campo=codigo" : "";
   const { data } = useSWR<{ pecas: Peca[] }>(
-    q.length >= 2
-      ? `/api/estoque?q=${encodeURIComponent(q)}${paramCampo}&limit=15`
+    qDebounced.length >= 2
+      ? `/api/estoque?q=${encodeURIComponent(qDebounced)}${paramCampo}&limit=15`
       : null,
     fetcher
   );
