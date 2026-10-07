@@ -538,12 +538,21 @@ function ItemBlock({
           valor={item.descricao}
           onValor={(v) => onPatch({ descricao: v })}
           onPeca={(p) => {
+            // CRÍTICO: só patchear quando o usuário SELECIONOU uma peça
+            // (p truthy). O PecaAutocomplete chama onPeca(null) a cada
+            // keystroke pra invalidar seleção anterior — se tocarmos em
+            // `descricao` nesse caso, sobrescrevemos a letra digitada
+            // com `item.descricao` do closure (valor stale) e o campo
+            // vira impossível de digitar (especialmente no mobile).
+            if (!p) {
+              if (item.peca) onPatch({ peca: null });
+              return;
+            }
             onPatch({
               peca: p,
-              descricao: p?.nome ?? item.descricao,
-              codigoPeca:
-                p?.codigo && !item.codigoPeca ? p.codigo : item.codigoPeca,
-              unidade: p?.unidade ?? item.unidade,
+              descricao: p.nome,
+              codigoPeca: item.codigoPeca || p.codigo || "",
+              unidade: p.unidade,
             });
           }}
         />
