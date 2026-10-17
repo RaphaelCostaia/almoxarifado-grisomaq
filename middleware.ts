@@ -6,7 +6,10 @@ const SECRET = new TextEncoder().encode(
     "dev-secret-mude-em-producao-grisomaq-almoxarifado-1234567890"
 );
 
-const ROTAS_PUBLICAS = ["/login", "/api/auth/login"];
+// Rotas que não exigem autenticação. `/api/health` é crítica — Traefik,
+// Docker e UptimeRobot pingam ela pra saber se o app está vivo. Se der
+// 401 aqui, o monitoramento marca o site como DOWN mesmo quando está OK.
+const ROTAS_PUBLICAS = ["/login", "/api/auth/login", "/api/health"];
 
 function garantirRequestId(req: NextRequest): string {
   const existente = req.headers.get("x-request-id");
