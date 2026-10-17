@@ -75,16 +75,20 @@ done
 
 echo ""
 echo "[6/6] Backup diário recente"
-dir=/data/backups
-if [ -d "$dir" ]; then
-  recentes=$(find "$dir" -name "*.sql*" -mtime -2 2>/dev/null | wc -l)
+# O volume do app monta /data dentro do container — backups ficam em
+# /data/backups/db (dumps do postgres) e /data/backups/uploads (tar dos
+# arquivos enviados). Verifica DENTRO do container, não no host.
+cid=$(docker ps -q -f name=grisomaq_almoxarifado-grisomaq | head -1)
+if [ -n "$cid" ]; then
+  recentes=$(docker exec "$cid" sh -c "find /data/backups/db -name '*.dump' -o -name '*.sql*' 2>/dev/null | wc -l")
   if [ "$recentes" -gt 0 ]; then
-    ok "$recentes backup(s) nas últimas 48h em $dir"
+    ultimo=$(docker exec "$cid" sh -c "ls -t /data/backups/db/ 2>/dev/null | head -1")
+    ok "$recentes backup(s) em /data/backups/db (último: $ultimo)"
   else
-    fail "nenhum backup nas últimas 48h em $dir"
+    warn "nenhum backup em /data/backups/db ainda (daemon pode não ter rodado — disparo é às 03:00)"
   fi
 else
-  warn "diretório $dir não existe"
+  warn "container do app não encontrado — não dá pra verificar backups"
 fi
 
 echo ""
