@@ -14,7 +14,7 @@ const ItemSchema = z.object({
   descricao: z.string().min(1),
   codigoPeca: z.string().max(64).optional().nullable(),
   fabricante: z.string().max(128).optional().nullable(),
-  quantidade: z.coerce.number().int().min(1),
+  quantidade: z.coerce.number().positive(),
   unidade: z.string().min(1).max(16).default("un"),
   pecaId: z.coerce.number().int().optional().nullable(),
 });
@@ -40,7 +40,7 @@ const NovoPedidoSchema = z.object({
   descricao: z.string().min(1).optional(),
   codigoPeca: z.string().max(64).optional().nullable(),
   fabricante: z.string().max(128).optional().nullable(),
-  quantidade: z.coerce.number().int().min(1).optional(),
+  quantidade: z.coerce.number().positive().optional(),
   unidade: z.string().min(1).max(16).optional(),
   pecaId: z.coerce.number().int().optional().nullable(),
 });
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
   // Resumo achatado em `pedidos` = 1º item (retrocompat com código antigo
   // e com relatórios/CSVs que ainda leem os campos planos).
   const primeiro = itens[0];
-  const totalQtd = itens.reduce((acc, i) => acc + i.quantidade, 0);
+  const totalQtd = itens.reduce((acc, i) => acc + Number(i.quantidade), 0);
 
   const pedidoCriado = await db.transaction(async (tx) => {
     const [pedido] = await tx
@@ -200,7 +200,8 @@ export async function POST(req: NextRequest) {
         descricao: primeiro.descricao,
         codigoPeca: primeiro.codigoPeca?.trim() || null,
         fabricante: primeiro.fabricante?.trim() || null,
-        quantidade: primeiro.quantidade,
+        // drizzle numeric aceita string — mantém precisão decimal
+        quantidade: String(primeiro.quantidade),
         unidade: primeiro.unidade,
         motivo: dados.motivo,
         solicitante,
@@ -218,7 +219,7 @@ export async function POST(req: NextRequest) {
         descricao: it.descricao,
         codigoPeca: it.codigoPeca?.trim() || null,
         fabricante: it.fabricante?.trim() || null,
-        quantidade: it.quantidade,
+        quantidade: String(it.quantidade),
         unidade: it.unidade,
       }))
     );

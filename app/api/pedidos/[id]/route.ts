@@ -204,13 +204,13 @@ export async function PATCH(
       const paraBaixar =
         itensDoPedido.length > 0
           ? itensDoPedido
-              .filter((it) => it.pecaId && it.quantidade > 0)
+              .filter((it) => it.pecaId && Number(it.quantidade) > 0)
               .map((it) => ({
                 pecaId: it.pecaId as number,
-                quantidade: it.quantidade,
+                quantidade: Number(it.quantidade),
               }))
           : atual.pecaId
-            ? [{ pecaId: atual.pecaId as number, quantidade: atual.quantidade }]
+            ? [{ pecaId: atual.pecaId as number, quantidade: Number(atual.quantidade) }]
             : [];
 
       if (paraBaixar.length > 0) {
@@ -225,7 +225,7 @@ export async function PATCH(
             await tx.insert(movimentacoes).values({
               pecaId: item.pecaId,
               tipo: "saida",
-              quantidade: item.quantidade,
+              quantidade: String(item.quantidade),
               motivo: `Entrega pedido #${atual.id}`,
               pedidoId: atual.id,
               autor,

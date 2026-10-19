@@ -35,7 +35,10 @@ export function NovaCompraForm({
 
   const [descricao, setDescricao] = useState("");
   const [peca, setPeca] = useState<Peca | null>(null);
-  const [qtd, setQtd] = useState(qtdInicial ?? 1);
+  // string pra aceitar "0,5" sem perder a vírgula enquanto digita
+  const [qtd, setQtd] = useState<string>(
+    qtdInicial != null ? String(qtdInicial) : "1"
+  );
   const [unidade, setUnidade] = useState("un");
   const [fornecedor, setFornecedor] = useState("");
   const [valorUnit, setValorUnit] = useState<string>("");
@@ -76,17 +79,22 @@ export function NovaCompraForm({
       : null;
     if (itemAlvo) {
       if (!descricao) setDescricao(itemAlvo.descricao);
-      if (!qtdInicial) setQtd(itemAlvo.quantidade);
+      if (!qtdInicial) setQtd(String(itemAlvo.quantidade));
       setUnidade(itemAlvo.unidade);
     } else {
       if (!descricao) setDescricao(pedidoPre.pedido.descricao);
-      if (!qtdInicial) setQtd(pedidoPre.pedido.quantidade);
+      if (!qtdInicial) setQtd(String(pedidoPre.pedido.quantidade));
       setUnidade(pedidoPre.pedido.unidade);
     }
   }, [pedidoPre, pedidoItemIdInicial, descricao, qtdInicial]);
 
   const totalNumero = parseMoney(valorUnit);
-  const total = totalNumero != null ? totalNumero * qtd : null;
+  // qtd é string ("0,5" / "2") — converte pra number pros cálculos
+  const qtdNum = Number(String(qtd).replace(",", "."));
+  const total =
+    totalNumero != null && Number.isFinite(qtdNum)
+      ? totalNumero * qtdNum
+      : null;
 
   const saldoPeca = peca ? toNum(peca.saldo) : null;
   const bloqueado = peca != null && saldoPeca != null && saldoPeca > 0;
@@ -104,7 +112,7 @@ export function NovaCompraForm({
           pedidoItemId: pedidoItemIdInicial ?? null,
           pecaId: peca?.id ?? null,
           descricao: peca ? peca.nome : descricao,
-          quantidade: qtd,
+          quantidade: qtdNum,
           unidade: peca ? peca.unidade : unidade,
           fornecedor: fornecedor || null,
           valorUnit: parseMoney(valorUnit),
@@ -225,10 +233,16 @@ export function NovaCompraForm({
             <label className="label-form">Quantidade</label>
             <input
               type="number"
-              min={1}
+              // step="any" + inputMode="decimal" permitem fracionária
+              // (ex.: 0,5 kg). onFocus select = ao focar, valor fica
+              // selecionado e a próxima tecla sobrescreve.
+              step="any"
+              min={0.001}
+              inputMode="decimal"
               className="input-base"
               value={qtd}
-              onChange={(e) => setQtd(Number(e.target.value))}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => setQtd(e.target.value)}
               required
             />
           </div>

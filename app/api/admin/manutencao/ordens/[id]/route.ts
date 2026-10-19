@@ -106,7 +106,9 @@ export async function PATCH(
           await tx.insert(movimentacoes).values({
             pecaId: pecaIdFinal,
             tipo: "saida",
-            quantidade: Math.max(1, Math.round(qtd)),
+            // movimentacoes.quantidade virou numeric(12,3) — passa qtd real
+            // sem arredondamento (hack antigo era por conta de int)
+            quantidade: String(qtd),
             motivo: `Manutenção OS #${id} — ${atual.compartimentoTipo}`,
             autor: nome,
           });

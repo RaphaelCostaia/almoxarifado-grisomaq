@@ -18,7 +18,9 @@ type ItemForm = {
   descricao: string;
   codigoPeca: string;
   fabricante: string;
-  quantidade: number;
+  // string pra permitir digitar "0,5" ou "0.5" sem perder vírgula enquanto
+  // o usuário tecla. Converte pra number só no submit.
+  quantidade: string;
   unidade: string;
   peca: Peca | null;
 };
@@ -35,7 +37,8 @@ export type PedidoPrefill = {
     descricao?: string;
     codigoPeca?: string | null;
     fabricante?: string | null;
-    quantidade?: number;
+    // string pq drizzle retorna numeric como string ("5.000" ou "0.500")
+    quantidade?: number | string;
     unidade?: string;
     pecaId?: number | null;
   }[];
@@ -43,7 +46,7 @@ export type PedidoPrefill = {
   descricao?: string;
   codigoPeca?: string | null;
   fabricante?: string | null;
-  quantidade?: number;
+  quantidade?: number | string;
   unidade?: string;
   pecaId?: number | null;
 };
@@ -69,13 +72,20 @@ function novoUid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+// Converte string "0,5" ou "0.5" pra número; retorna NaN se inválido.
+function parseQtd(v: string | number | null | undefined): number {
+  if (typeof v === "number") return v;
+  if (!v) return NaN;
+  return Number(String(v).replace(",", "."));
+}
+
 function itemVazio(): ItemForm {
   return {
     uid: novoUid(),
     descricao: "",
     codigoPeca: "",
     fabricante: "",
-    quantidade: 1,
+    quantidade: "1",
     unidade: "un",
     peca: null,
   };
@@ -88,7 +98,7 @@ function itensIniciais(prefill?: PedidoPrefill): ItemForm[] {
       descricao: it.descricao ?? "",
       codigoPeca: it.codigoPeca ?? "",
       fabricante: it.fabricante ?? "",
-      quantidade: it.quantidade ?? 1,
+      quantidade: it.quantidade != null ? String(it.quantidade) : "1",
       unidade: it.unidade ?? "un",
       peca: null,
     }));
@@ -106,7 +116,7 @@ function itensIniciais(prefill?: PedidoPrefill): ItemForm[] {
         descricao: prefill.descricao ?? "",
         codigoPeca: prefill.codigoPeca ?? "",
         fabricante: prefill.fabricante ?? "",
-        quantidade: prefill.quantidade ?? 1,
+        quantidade: prefill.quantidade != null ? String(prefill.quantidade) : "1",
         unidade: prefill.unidade ?? "un",
         peca: null,
       },
@@ -177,8 +187,9 @@ export function NovoPedidoDialog({
         setErro("Preencha a peça/descrição em todos os itens.");
         return;
       }
-      if (!Number.isFinite(it.quantidade) || it.quantidade < 1) {
-        setErro(`Quantidade inválida em "${desc}".`);
+      const qtdNum = parseQtd(it.quantidade);
+      if (!Number.isFinite(qtdNum) || qtdNum <= 0) {
+        setErro(`Quantidade inválida em "${desc}" (use número positivo, ex: 1 ou 0,5).`);
         return;
       }
     }
@@ -210,7 +221,8 @@ export function NovoPedidoDialog({
         codigoPeca:
           (it.codigoPeca || it.peca?.codigo || "").trim() || null,
         fabricante: it.fabricante.trim() || null,
-        quantidade: it.quantidade,
+        // converte "0,5" → 0.5 antes de enviar (Zod ainda valida > 0)
+        quantidade: parseQtd(it.quantidade),
         unidade: it.peca?.unidade || it.unidade || "un",
         pecaId: it.peca?.id ?? null,
       }));
@@ -613,12 +625,17 @@ function ItemBlock({
           <label className="label-form">Quantidade</label>
           <input
             type="number"
-            min={1}
+            // step="any" + inputMode="decimal" permitem fracionária
+            // (ex.: 0,5 kg de eletrodo). onFocus select = ao clicar no
+            // campo, o valor atual fica selecionado — a próxima tecla
+            // sobrescreve. Resolve a reclamação de "ter que apagar o 1".
+            step="any"
+            min={0.001}
+            inputMode="decimal"
             className="input-base"
             value={item.quantidade}
-            onChange={(e) =>
-              onPatch({ quantidade: Number(e.target.value) || 1 })
-            }
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => onPatch({ quantidade: e.target.value })}
             required
           />
         </div>

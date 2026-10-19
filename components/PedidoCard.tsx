@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import type { Pedido } from "@/db/schema";
 import { formatBR, diasDesde } from "@/lib/date";
+import { formatSaldo } from "@/lib/formatSaldo";
 
 // Pedido pode trazer `qtdItens` do GET lista (contagem de pedido_itens). Se
 // vier > 1, o card mostra "N peças" em vez da descrição única.
@@ -85,7 +86,7 @@ export function PedidoCard({
               className="font-mono text-[10px] font-bold tabular-nums"
               style={{ color: "var(--text-muted)" }}
             >
-              ×{pedido.quantidade} {pedido.unidade}
+              ×{formatSaldo(pedido.quantidade, pedido.unidade)} {pedido.unidade}
             </span>
           )}
         </div>

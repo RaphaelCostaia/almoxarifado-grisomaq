@@ -635,7 +635,7 @@ function ItemLinha({
           className="chip font-mono tabular-nums"
           style={{ background: "var(--surface)" }}
         >
-          {item.quantidade} {item.unidade}
+          {formatSaldo(item.quantidade, item.unidade)} {item.unidade}
         </span>
       </div>
       {isAdmin && (

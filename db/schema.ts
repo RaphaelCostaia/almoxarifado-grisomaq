@@ -130,7 +130,10 @@ export const pedidos = pgTable(
     descricao: text("descricao").notNull(),
     codigoPeca: varchar("codigo_peca", { length: 64 }),
     fabricante: varchar("fabricante", { length: 128 }),
-    quantidade: integer("quantidade").notNull().default(1),
+    // numeric pra aceitar fracionária (0.5 kg, 0.8 L de óleo, etc.)
+    quantidade: numeric("quantidade", { precision: 12, scale: 3 })
+      .notNull()
+      .default("1"),
     unidade: varchar("unidade", { length: 16 }).notNull().default("un"),
     motivo: varchar("motivo", { length: 200 }).notNull(),
     solicitante: varchar("solicitante", { length: 64 }).notNull(),
@@ -195,7 +198,9 @@ export const pedidoItens = pgTable(
     descricao: text("descricao").notNull(),
     codigoPeca: varchar("codigo_peca", { length: 64 }),
     fabricante: varchar("fabricante", { length: 128 }),
-    quantidade: integer("quantidade").notNull().default(1),
+    quantidade: numeric("quantidade", { precision: 12, scale: 3 })
+      .notNull()
+      .default("1"),
     unidade: varchar("unidade", { length: 16 }).notNull().default("un"),
     criadoEm: timestamp("criado_em", { withTimezone: true })
       .defaultNow()
@@ -241,7 +246,9 @@ export const compras = pgTable(
       onDelete: "set null",
     }),
     descricao: text("descricao").notNull(),
-    quantidade: integer("quantidade").notNull().default(1),
+    quantidade: numeric("quantidade", { precision: 12, scale: 3 })
+      .notNull()
+      .default("1"),
     unidade: varchar("unidade", { length: 16 }).notNull().default("un"),
     fornecedor: varchar("fornecedor", { length: 128 }),
     valorUnit: numeric("valor_unit", { precision: 12, scale: 2 }),
@@ -290,7 +297,7 @@ export const movimentacoes = pgTable(
       .references(() => pecas.id, { onDelete: "cascade" })
       .notNull(),
     tipo: tipoMovimentacaoEnum("tipo").notNull(),
-    quantidade: integer("quantidade").notNull(),
+    quantidade: numeric("quantidade", { precision: 12, scale: 3 }).notNull(),
     motivo: varchar("motivo", { length: 128 }),
     pedidoId: integer("pedido_id").references(() => pedidos.id, {
       onDelete: "set null",

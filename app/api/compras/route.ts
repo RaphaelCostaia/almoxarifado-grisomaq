@@ -18,7 +18,7 @@ const NovaCompraSchema = z.object({
   pedidoItemId: z.coerce.number().int().optional().nullable(),
   pecaId: z.coerce.number().int().optional().nullable(),
   descricao: z.string().min(1),
-  quantidade: z.coerce.number().int().min(1),
+  quantidade: z.coerce.number().positive(),
   unidade: z.string().min(1).max(16).default("un"),
   fornecedor: z.string().max(128).optional().nullable(),
   valorUnit: z.coerce.number().optional().nullable(),
@@ -118,7 +118,8 @@ export async function POST(req: NextRequest) {
       pedidoItemId: d.pedidoItemId ?? null,
       pecaId: d.pecaId ?? null,
       descricao: d.descricao,
-      quantidade: d.quantidade,
+      // drizzle numeric aceita string — preserva decimal (ex: "0.500")
+      quantidade: String(d.quantidade),
       unidade: d.unidade,
       fornecedor: d.fornecedor ?? null,
       valorUnit: d.valorUnit != null ? d.valorUnit.toFixed(2) : null,

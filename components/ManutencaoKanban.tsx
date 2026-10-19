@@ -5,6 +5,7 @@ import useSWR from "swr";
 import type { ManutencaoOrdem } from "@/db/schema";
 import { STATUS_MANUTENCAO_LABELS } from "@/db/schema";
 import { formatBR } from "@/lib/date";
+import { formatSaldo } from "@/lib/formatSaldo";
 import { ManutencaoConcluirDialog } from "./ManutencaoConcluirDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -237,7 +238,7 @@ function OrdemCard({
             {o.pecaDescricao ?? "(sem peça vinculada)"}
           </div>
           <div className="mt-1 font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
-            {o.quantidade} {o.unidade}
+            {formatSaldo(o.quantidade, o.unidade)} {o.unidade}
           </div>
         </div>
       </div>
@@ -349,7 +350,7 @@ function DetalheDialog({
           <Info label="Compartimento" v={`${o.compartimentoCodigo ?? "—"} · ${o.compartimentoTipo}`} />
           <Info label="Peça código" v={o.pecaCodigo ?? "—"} mono />
           <Info label="Peça" v={o.pecaDescricao ?? "—"} />
-          <Info label="Quantidade" v={`${o.quantidade} ${o.unidade}`} mono />
+          <Info label="Quantidade" v={`${formatSaldo(o.quantidade, o.unidade)} ${o.unidade}`} mono />
           <Info label="Criado por" v={`${o.criadoPor} · ${formatBR(o.criadoEm)}`} />
           {o.iniciadoEm && (
             <Info label="Iniciado" v={`${o.iniciadoPor} · ${formatBR(o.iniciadoEm)}`} />

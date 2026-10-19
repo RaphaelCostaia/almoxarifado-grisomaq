@@ -223,7 +223,7 @@ export function CompraDetalhe({ id }: { id: number }) {
                 className="font-mono text-xs"
                 style={{ color: "var(--text-muted)" }}
               >
-                {c.quantidade} {c.unidade}
+                {formatSaldo(c.quantidade, c.unidade)} {c.unidade}
               </div>
             </>
           }
@@ -482,7 +482,7 @@ export function CompraDetalhe({ id }: { id: number }) {
                   value={
                     aValorUnit && !Number.isNaN(Number(aValorUnit.replace(",", ".")))
                       ? `R$ ${(
-                          Number(aValorUnit.replace(",", ".")) * c.quantidade
+                          Number(aValorUnit.replace(",", ".")) * Number(c.quantidade)
                         ).toLocaleString("pt-BR", {
                           minimumFractionDigits: 2,
                         })}`
@@ -630,7 +630,7 @@ export function CompraDetalhe({ id }: { id: number }) {
               className="mb-3 text-sm"
               style={{ color: "var(--text-muted)" }}
             >
-              Isso dá entrada de <b>{c.quantidade} {c.unidade}</b> no estoque
+              Isso dá entrada de <b>{formatSaldo(c.quantidade, c.unidade)} {c.unidade}</b> no estoque
               {data.peca ? ` de ${data.peca.nome}` : ""}.
               {c.pedidoId && (
                 <>

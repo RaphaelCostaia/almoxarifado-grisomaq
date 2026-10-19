@@ -210,12 +210,12 @@ export async function PATCH(
     update.valorUnit = dados.valorUnit != null ? dados.valorUnit.toFixed(2) : null;
     update.valorTotal =
       dados.valorUnit != null
-        ? (Number(dados.valorUnit) * atual.quantidade).toFixed(2)
+        ? (Number(dados.valorUnit) * Number(atual.quantidade)).toFixed(2)
         : null;
     if (dados.valorUnit != null && atual.valorUnit == null) {
       eventos.push(
         `Preço definido: R$ ${dados.valorUnit.toFixed(2)} unit / R$ ${(
-          Number(dados.valorUnit) * atual.quantidade
+          Number(dados.valorUnit) * Number(atual.quantidade)
         ).toFixed(2)} total.`
       );
     }
@@ -280,7 +280,7 @@ export async function PATCH(
           await tx.insert(movimentacoes).values({
             pecaId,
             tipo: "entrada",
-            quantidade: qtd,
+            quantidade: String(qtd),
             motivo: `Recebimento compra #${atual.id}${
               dados.nfNumero ? ` NF ${dados.nfNumero}` : ""
             }`,

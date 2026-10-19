@@ -71,7 +71,9 @@ export async function GET(req: NextRequest) {
         Descricao: r.descricao,
         CodigoPeca: r.codigoPeca ?? "",
         Fabricante: r.fabricante ?? "",
-        Quantidade: r.quantidade,
+        // Number() converte "5.000" (string drizzle numeric) pra 5 e
+        // "0.500" pra 0.5 — evita Excel interpretar "5.000" como "cinco mil"
+        Quantidade: Number(r.quantidade),
         Unidade: r.unidade,
       });
     } else {
@@ -82,7 +84,7 @@ export async function GET(req: NextRequest) {
           Descricao: it.descricao,
           CodigoPeca: it.codigoPeca ?? "",
           Fabricante: it.fabricante ?? "",
-          Quantidade: it.quantidade,
+          Quantidade: Number(it.quantidade),
           Unidade: it.unidade,
         });
       });

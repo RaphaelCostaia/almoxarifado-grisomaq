@@ -132,6 +132,7 @@ export function ManutencaoConcluirDialog({
             <input
               className="input-base font-mono"
               value={quantidade}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setQuantidade(e.target.value)}
               inputMode="decimal"
             />

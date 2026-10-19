@@ -396,6 +396,34 @@ async function main() {
   `);
   console.log(`[constraints]   backfilled ${(backfill as any).length ?? 0} pedidos`);
 
+  // ================================================================
+  // QUANTIDADE DECIMAL — pedidos/compras/movimentações aceitam fracionária
+  // ================================================================
+  // Pre: integer → Pos: numeric(12,3). Conversão sem perda de dado:
+  // quantidade=5 vira 5.000, equivalente. Peças com unidade KG/L/M agora
+  // aceitam 0.500, 0.800 etc.
+  //
+  // Idempotente: ALTER COLUMN TYPE pra numeric(12,3) é no-op quando a
+  // coluna já é numeric(12,3). Dentro de DO $$ pra tolerar re-runs limpos.
+  console.log("[constraints] Convertendo colunas quantidade pra numeric(12,3)…");
+  for (const tabela of ["pedidos", "pedido_itens", "compras", "movimentacoes"]) {
+    await db.execute(sql.raw(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = '${tabela}'
+            AND column_name = 'quantidade'
+            AND data_type = 'integer'
+        ) THEN
+          ALTER TABLE ${tabela}
+            ALTER COLUMN quantidade TYPE numeric(12,3) USING quantidade::numeric(12,3);
+          RAISE NOTICE 'Convertido ${tabela}.quantidade pra numeric(12,3)';
+        END IF;
+      END $$;
+    `));
+  }
+
   console.log("[constraints] ✓ Concluído.");
   process.exit(0);
 }

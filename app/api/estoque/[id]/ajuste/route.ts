@@ -55,7 +55,7 @@ export async function POST(
     await tx.insert(movimentacoes).values({
       pecaId,
       tipo,
-      quantidade: quantidadeInt,
+      quantidade: String(quantidadeInt),
       motivo: motivo ?? null,
       autor,
     });
