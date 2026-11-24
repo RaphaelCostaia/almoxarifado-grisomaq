@@ -72,13 +72,8 @@ def normaliza_saldo(v):
         return "0"
 
 
-def main():
-    if len(sys.argv) != 2:
-        print("Uso: python scripts/gerar-seed-pecas.py <caminho_para_xlsx>")
-        sys.exit(2)
-
-    xlsx = Path(sys.argv[1])
-    print(f"[gerar-seed-pecas] Lendo {xlsx.name}…")
+def carregar_pecas(xlsx: Path):
+    """Le o XLSX do GMAIS. Devolve (registros, pulados_sem_cod, pulados_sem_desc, unidades_normalizadas)."""
     wb = openpyxl.load_workbook(xlsx, data_only=True)
     ws = wb["Plan1"]
 
@@ -113,6 +108,17 @@ def main():
                 "codigoParalelo": limpa(ws.cell(row=row, column=13).value, maxlen=64),
             }
         )
+    return registros, pulados_sem_cod, pulados_sem_desc, unidades_normalizadas
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("Uso: python scripts/gerar-seed-pecas.py <caminho_para_xlsx>")
+        sys.exit(2)
+
+    xlsx = Path(sys.argv[1])
+    print(f"[gerar-seed-pecas] Lendo {xlsx.name}…")
+    registros, pulados_sem_cod, pulados_sem_desc, unidades_normalizadas = carregar_pecas(xlsx)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT.open("w", encoding="utf-8") as f:

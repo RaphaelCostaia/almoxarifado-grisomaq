@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { frotas } from "@/db/schema";
 import { exigirAdminApi } from "@/lib/api-auth";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const NovaSchema = z.object({
   numero: z.string().min(1).max(32),
   categoria: z
-    .enum(["equipamento", "implemento", "centro_operacao"])
+    .enum(["equipamento", "implemento", "centro_operacao", "agregado"])
     .default("equipamento"),
   modelo: z.string().max(128).optional().nullable(),
   marca: z.string().max(64).optional().nullable(),
@@ -50,18 +50,26 @@ export async function GET(req: NextRequest) {
   if (
     categoria === "equipamento" ||
     categoria === "implemento" ||
-    categoria === "centro_operacao"
+    categoria === "centro_operacao" ||
+    categoria === "agregado"
   ) {
     conds.push(eq(frotas.categoria, categoria));
+  } else if (!q) {
+    // Os ~4,5 mil agregados só aparecem na aba própria ou numa busca.
+    conds.push(ne(frotas.categoria, "agregado"));
   }
   if (status === "ativos") conds.push(eq(frotas.ativo, 1));
   if (status === "inativos") conds.push(eq(frotas.ativo, 0));
 
-  const rows = await db
+  const LIMITE = 500;
+  const encontradas = await db
     .select()
     .from(frotas)
     .where(and(...conds))
-    .orderBy(frotas.categoria, asc(frotas.numero));
+    .orderBy(frotas.categoria, asc(frotas.numero))
+    .limit(LIMITE + 1);
+  const limitado = encontradas.length > LIMITE;
+  const rows = encontradas.slice(0, LIMITE);
 
   const [resumo] = await db
     .select({
@@ -69,13 +77,14 @@ export async function GET(req: NextRequest) {
       equipamentos: sql<number>`sum(case when categoria='equipamento' then 1 else 0 end)::int`,
       implementos: sql<number>`sum(case when categoria='implemento' then 1 else 0 end)::int`,
       centrosOperacao: sql<number>`sum(case when categoria='centro_operacao' then 1 else 0 end)::int`,
+      agregados: sql<number>`sum(case when categoria='agregado' then 1 else 0 end)::int`,
       ativos: sql<number>`sum(case when ativo=1 then 1 else 0 end)::int`,
       inativos: sql<number>`sum(case when ativo=0 then 1 else 0 end)::int`,
     })
     .from(frotas)
     .where(isNull(frotas.deletadoEm));
 
-  return NextResponse.json({ frotas: rows, resumo });
+  return NextResponse.json({ frotas: rows, resumo, limitado, limite: LIMITE });
 }
 
 export async function POST(req: NextRequest) {

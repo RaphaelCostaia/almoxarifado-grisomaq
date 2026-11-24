@@ -144,6 +144,18 @@ async function main() {
       END IF;
     END $$;
   `);
+  // Adiciona 'agregado' (componentes com código próprio no GMAIS: pneus, motores, ferramentas…)
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_enum
+        WHERE enumlabel = 'agregado'
+          AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'categoria_frota')
+      ) THEN
+        ALTER TYPE categoria_frota ADD VALUE 'agregado';
+      END IF;
+    END $$;
+  `);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS frotas (
       id SERIAL PRIMARY KEY,

@@ -91,7 +91,7 @@ export function FrotaAutocomplete({
               color: "var(--text-muted)",
             }}
           >
-            Frotas cadastradas
+            Frotas, COs e agregados
           </div>
           {opcoes.map((f, i) => {
             const linha1 =
@@ -123,12 +123,16 @@ export function FrotaAutocomplete({
                         ? "var(--warning-soft)"
                         : f.categoria === "centro_operacao"
                         ? "rgba(59,130,246,0.15)"
+                        : f.categoria === "agregado"
+                        ? "rgba(168,85,247,0.15)"
                         : "var(--brand-soft)",
                     color:
                       f.categoria === "implemento"
                         ? "var(--warning)"
                         : f.categoria === "centro_operacao"
                         ? "#3b82f6"
+                        : f.categoria === "agregado"
+                        ? "#a855f7"
                         : "var(--brand)",
                   }}
                 >
@@ -145,15 +149,22 @@ export function FrotaAutocomplete({
                     className="truncate font-mono text-[10px]"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    {[
-                      f.placa,
-                      f.ano,
-                      f.categoria === "implemento"
-                        ? "implemento"
-                        : f.categoria === "centro_operacao"
-                        ? "centro de operação"
-                        : null,
-                    ]
+                    {(f.categoria === "agregado"
+                      ? [
+                          "agregado",
+                          f.descricao,
+                          f.localizacao ? `em ${f.localizacao}` : null,
+                        ]
+                      : [
+                          f.placa,
+                          f.ano,
+                          f.categoria === "implemento"
+                            ? "implemento"
+                            : f.categoria === "centro_operacao"
+                            ? "centro de operação"
+                            : null,
+                        ]
+                    )
                       .filter(Boolean)
                       .join(" · ")}
                   </div>

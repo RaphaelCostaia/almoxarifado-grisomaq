@@ -16,7 +16,7 @@ export function FrotaEditDialog({ frota, onClose, onSaved }: Props) {
 
   const [numero, setNumero] = useState(frota?.numero ?? "");
   const [categoria, setCategoria] = useState<
-    "equipamento" | "implemento" | "centro_operacao"
+    "equipamento" | "implemento" | "centro_operacao" | "agregado"
   >(frota?.categoria ?? "equipamento");
   const [modelo, setModelo] = useState(frota?.modelo ?? "");
   const [marca, setMarca] = useState(frota?.marca ?? "");
@@ -86,12 +86,13 @@ export function FrotaEditDialog({ frota, onClose, onSaved }: Props) {
           </div>
           <div className="col-span-2">
             <label className="label-form">Categoria</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {(
                 [
                   { key: "equipamento", label: "equipamento", cor: "var(--brand)" },
                   { key: "implemento", label: "implemento", cor: "var(--warning)" },
                   { key: "centro_operacao", label: "CO", cor: "#3b82f6" },
+                  { key: "agregado", label: "agregado", cor: "#a855f7" },
                 ] as const
               ).map((c) => (
                 <button

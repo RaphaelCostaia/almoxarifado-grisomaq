@@ -13,18 +13,22 @@ type Resumo = {
   equipamentos: number;
   implementos: number;
   centrosOperacao: number;
+  agregados: number;
   ativos: number;
   inativos: number;
 };
 
+type Categoria = "todas" | "equipamento" | "implemento" | "centro_operacao" | "agregado";
+
 const CATEGORIAS: {
-  key: "todas" | "equipamento" | "implemento" | "centro_operacao";
+  key: Categoria;
   label: string;
 }[] = [
   { key: "todas", label: "Todas" },
   { key: "equipamento", label: "Equipamentos" },
   { key: "implemento", label: "Implementos" },
   { key: "centro_operacao", label: "COs" },
+  { key: "agregado", label: "Agregados" },
 ];
 
 const STATUS: { key: "todos" | "ativos" | "inativos"; label: string }[] = [
@@ -35,9 +39,7 @@ const STATUS: { key: "todos" | "ativos" | "inativos"; label: string }[] = [
 
 export function FrotasLista() {
   const [q, setQ] = useState("");
-  const [categoria, setCategoria] = useState<
-    "todas" | "equipamento" | "implemento" | "centro_operacao"
-  >("todas");
+  const [categoria, setCategoria] = useState<Categoria>("todas");
   const [status, setStatus] = useState<"todos" | "ativos" | "inativos">(
     "ativos"
   );
@@ -47,7 +49,12 @@ export function FrotasLista() {
   if (q) params.set("q", q);
   if (categoria !== "todas") params.set("categoria", categoria);
   if (status !== "todos") params.set("status", status);
-  const { data, mutate } = useSWR<{ frotas: Frota[]; resumo: Resumo }>(
+  const { data, mutate } = useSWR<{
+    frotas: Frota[];
+    resumo: Resumo;
+    limitado?: boolean;
+    limite?: number;
+  }>(
     `/api/admin/frotas?${params}`,
     fetcher,
     { refreshInterval: 8000 }
@@ -59,6 +66,7 @@ export function FrotasLista() {
     equipamentos: 0,
     implementos: 0,
     centrosOperacao: 0,
+    agregados: 0,
     ativos: 0,
     inativos: 0,
   };
@@ -74,7 +82,7 @@ export function FrotasLista() {
             Administração
           </div>
           <h1 className="text-xl font-bold tracking-tight">
-            Frotas, Implementos & COs
+            Frotas, Implementos, COs & Agregados
           </h1>
         </div>
         <button
@@ -86,11 +94,12 @@ export function FrotasLista() {
         </button>
       </div>
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-3 gap-2 md:grid-cols-6">
         <Res n={r.total} label="Total" />
         <Res n={r.equipamentos} label="Equipamentos" tone="brand" />
         <Res n={r.implementos} label="Implementos" tone="warning" />
         <Res n={r.centrosOperacao} label="COs" tone="info" />
+        <Res n={r.agregados} label="Agregados" tone="agregado" />
         <Res
           n={r.inativos}
           label="Baixadas"
@@ -108,7 +117,7 @@ export function FrotasLista() {
           </span>
           <input
             className="input-base pl-8"
-            placeholder="Buscar por nº, modelo, marca, placa…"
+            placeholder="Buscar por nº, AG + código, modelo, marca, placa…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -180,12 +189,16 @@ export function FrotasLista() {
                           ? "var(--warning-soft)"
                           : f.categoria === "centro_operacao"
                           ? "rgba(59,130,246,0.15)"
+                          : f.categoria === "agregado"
+                          ? "rgba(168,85,247,0.15)"
                           : "var(--brand-soft)",
                       color:
                         f.categoria === "implemento"
                           ? "var(--warning)"
                           : f.categoria === "centro_operacao"
                           ? "#3b82f6"
+                          : f.categoria === "agregado"
+                          ? "#a855f7"
                           : "var(--brand)",
                     }}
                   >
@@ -200,6 +213,8 @@ export function FrotasLista() {
                     ? "IMPL"
                     : f.categoria === "centro_operacao"
                     ? "CO"
+                    : f.categoria === "agregado"
+                    ? "AGREG"
                     : "EQUIP"}
                 </td>
                 <td className="px-3 py-2.5">
@@ -270,6 +285,15 @@ export function FrotasLista() {
             )}
           </tbody>
         </table>
+        {data?.limitado && (
+          <div
+            className="border-t px-3 py-2.5 text-center text-xs"
+            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+          >
+            Mostrando os primeiros {data.limite}. Use a busca para encontrar os
+            demais.
+          </div>
+        )}
       </div>
 
       {editar && (
@@ -304,7 +328,7 @@ function Res({
 }: {
   n: number;
   label: string;
-  tone?: "brand" | "warning" | "muted" | "info";
+  tone?: "brand" | "warning" | "muted" | "info" | "agregado";
 }) {
   const color =
     tone === "brand"
@@ -313,6 +337,8 @@ function Res({
       ? "var(--warning)"
       : tone === "info"
       ? "#3b82f6"
+      : tone === "agregado"
+      ? "#a855f7"
       : tone === "muted"
       ? "var(--text-muted)"
       : "var(--text)";

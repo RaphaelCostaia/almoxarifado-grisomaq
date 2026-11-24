@@ -18,6 +18,7 @@ export const categoriaFrotaEnum = pgEnum("categoria_frota", [
   "equipamento",
   "implemento",
   "centro_operacao",
+  "agregado",
 ]);
 
 export const prioridadeEnum = pgEnum("prioridade", ["normal", "urgente"]);

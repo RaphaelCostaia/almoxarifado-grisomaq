@@ -268,17 +268,19 @@ export function NovoPedidoDialog({
       <form onSubmit={submit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label-form">Frota / Equipamento / CO</label>
+            <label className="label-form">Frota / Equipamento / CO / Agregado</label>
             <FrotaAutocomplete
               valor={frota}
               onValor={setFrota}
               required
-              placeholder="Nº da frota, CO, modelo ou placa…"
+              placeholder="Nº da frota, CO, agregado, modelo ou placa…"
               onFrota={(f) => {
                 if (!f) return;
                 if (!modeloVeiculo && f.modelo) {
                   setModeloVeiculo(
-                    f.marca && !f.modelo.toUpperCase().startsWith(f.marca.toUpperCase())
+                    f.categoria !== "agregado" &&
+                      f.marca &&
+                      !f.modelo.toUpperCase().startsWith(f.marca.toUpperCase())
                       ? `${f.marca} ${f.modelo}`
                       : f.modelo
                   );
@@ -292,7 +294,8 @@ export function NovoPedidoDialog({
               className="mt-1 text-[10px]"
               style={{ color: "var(--text-muted)" }}
             >
-              Manutenção de oficina, silo ou setor? Digite CO (ex.: CO37).
+              Oficina, silo ou setor? Digite CO (ex.: CO37). Agregado? Digite AG
+              + código (ex.: AG12).
             </p>
           </div>
           <div>

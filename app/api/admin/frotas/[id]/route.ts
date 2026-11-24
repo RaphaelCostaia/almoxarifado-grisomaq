@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const PatchSchema = z.object({
   numero: z.string().min(1).max(32).optional(),
   categoria: z
-    .enum(["equipamento", "implemento", "centro_operacao"])
+    .enum(["equipamento", "implemento", "centro_operacao", "agregado"])
     .optional(),
   modelo: z.string().max(128).optional().nullable(),
   marca: z.string().max(64).optional().nullable(),
